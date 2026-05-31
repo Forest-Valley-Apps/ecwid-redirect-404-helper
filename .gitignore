@@ -1,0 +1,12 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Build artifacts
+/dist/
+*.zip
+
+# Local env / logs
+.DS_Store
+*.log
+.wp-env-override.json

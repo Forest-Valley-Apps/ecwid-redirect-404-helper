@@ -1,0 +1,18 @@
+{
+  "name": "ecwid-redirect-404-helper-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dev workspace for the Redirect & 404 Helper for Ecwid WordPress plugin (wp-env local WordPress).",
+  "scripts": {
+    "env:start": "wp-env start",
+    "env:stop": "wp-env stop",
+    "env:activate": "wp-env run cli wp plugin activate ecwid-redirect-404-helper",
+    "env:deactivate": "wp-env run cli wp plugin deactivate ecwid-redirect-404-helper",
+    "env:status": "wp-env run cli wp plugin list",
+    "env:clean": "wp-env clean all",
+    "env:destroy": "wp-env destroy"
+  },
+  "devDependencies": {
+    "@wordpress/env": "^10.6.0"
+  }
+}
