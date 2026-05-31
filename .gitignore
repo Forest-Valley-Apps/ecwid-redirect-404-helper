@@ -10,3 +10,6 @@
 .DS_Store
 *.log
 .wp-env-override.json
+
+# Test artifacts
+.phpunit.result.cache
