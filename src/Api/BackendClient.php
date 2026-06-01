@@ -228,8 +228,8 @@ final class BackendClient {
 	/**
 	 * POST a report body without blocking the caller.
 	 *
-	 * @param string               $endpoint Path beginning with a slash.
-	 * @param array<string,mixed>  $body     JSON body to send.
+	 * @param string              $endpoint Path beginning with a slash.
+	 * @param array<string,mixed> $body     JSON body to send.
 	 * @return void
 	 */
 	private function report( string $endpoint, array $body ): void {

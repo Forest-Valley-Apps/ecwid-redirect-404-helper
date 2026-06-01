@@ -126,18 +126,18 @@ final class EcwidCatalogClient {
 	/**
 	 * Look up a catalog entity by id and map the HTTP result to a status.
 	 *
-	 * @param string $resource Resource segment ('products' or 'categories').
-	 * @param int    $id       Entity id.
+	 * @param string $collection Catalog collection ('products' or 'categories').
+	 * @param int    $id         Entity id.
 	 * @return string One of the EXISTS / NOT_FOUND / UNKNOWN constants.
 	 */
-	private function check( string $resource, int $id ): string {
+	private function check( string $collection, int $id ): string {
 		if ( '' === $this->public_token ) {
 			// No token discovered yet (Session 3's job) — can't authenticate.
 			return self::UNKNOWN;
 		}
 
 		$response = wp_remote_get(
-			$this->entity_url( $resource, $id ),
+			$this->entity_url( $collection, $id ),
 			array(
 				'timeout' => self::TIMEOUT,
 				'headers' => array(
@@ -171,16 +171,16 @@ final class EcwidCatalogClient {
 	 * not the query string. Requests only the `id` field to keep the response
 	 * small.
 	 *
-	 * @param string $resource Resource segment ('products' or 'categories').
-	 * @param int    $id       Entity id.
+	 * @param string $collection Catalog collection ('products' or 'categories').
+	 * @param int    $id         Entity id.
 	 * @return string
 	 */
-	private function entity_url( string $resource, int $id ): string {
+	private function entity_url( string $collection, int $id ): string {
 		return sprintf(
 			'%s/%d/%s/%d?responseFields=id',
 			$this->base_url,
 			$this->store_id,
-			$resource,
+			$collection,
 			$id
 		);
 	}
