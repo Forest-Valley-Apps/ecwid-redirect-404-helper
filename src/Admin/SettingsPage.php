@@ -264,7 +264,7 @@ final class SettingsPage {
 	 * @return BackendClient
 	 */
 	private function backend_for( int $store_id ): BackendClient {
-		return new BackendClient( $store_id, $this->backend_base_url() );
+		return BackendClient::for_store( $store_id );
 	}
 
 	/**
@@ -278,20 +278,6 @@ final class SettingsPage {
 			$this->backend_for( $discovery->store_id() ),
 			new EcwidCatalogClient( $discovery->store_id(), $discovery->public_token() )
 		);
-	}
-
-	/**
-	 * The backend base URL, overridable for staging/dev via a filter.
-	 *
-	 * @return string
-	 */
-	private function backend_base_url(): string {
-		/**
-		 * Filter the hosted-backend base URL (e.g. to point at staging).
-		 *
-		 * @param string $base_url Default production base URL.
-		 */
-		return (string) apply_filters( 'fv_erh_backend_base_url', BackendClient::PROD_BASE_URL );
 	}
 
 	/**

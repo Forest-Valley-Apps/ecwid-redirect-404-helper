@@ -238,9 +238,9 @@ final class EcwidCatalogClient {
 	/**
 	 * Full URL for a catalog entity lookup.
 	 *
-	 * The token travels in the Authorization header (see {@see self::check()}),
-	 * not the query string. Requests only the `id` field to keep the response
-	 * small.
+	 * The token travels in the Authorization header (see
+	 * {@see self::request_status()}), not the query string. Requests only the
+	 * `id` field to keep the response small.
 	 *
 	 * @param string $collection Catalog collection ('products' or 'categories').
 	 * @param int    $id         Entity id.

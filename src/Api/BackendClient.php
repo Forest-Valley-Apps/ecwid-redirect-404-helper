@@ -111,6 +111,26 @@ final class BackendClient {
 	}
 
 	/**
+	 * Build a client for a store against the site-configured base URL.
+	 *
+	 * The canonical way to construct a client outside of tests — every feature
+	 * (settings screen, 404 capture, …) gets the same filtered base URL.
+	 *
+	 * @param int $store_id Ecwid store id.
+	 * @return self
+	 */
+	public static function for_store( int $store_id ): self {
+		/**
+		 * Filter the hosted-backend base URL (e.g. to point at staging).
+		 *
+		 * @param string $base_url Default production base URL.
+		 */
+		$base_url = (string) apply_filters( 'fv_erh_backend_base_url', self::PROD_BASE_URL );
+
+		return new self( $store_id, $base_url );
+	}
+
+	/**
 	 * Fetch the resolved redirect ruleset for this store.
 	 *
 	 * The result is cached in a transient; on any transport/parse error the
@@ -234,6 +254,9 @@ final class BackendClient {
 
 	/**
 	 * Clamp a report field to the backend's maximum accepted length.
+	 *
+	 * `NotFoundLog::clamp()` deliberately mirrors this so the stored and the
+	 * reported path are always the same string.
 	 *
 	 * @param string $value Field value.
 	 * @return string
