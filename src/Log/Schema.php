@@ -28,9 +28,11 @@ final class Schema {
 	/**
 	 * Current schema version. Bump on any table change.
 	 *
+	 * v1: 404 log table (S4). v2: + manual redirects table (S5).
+	 *
 	 * @var string
 	 */
-	public const DB_VERSION = '1';
+	public const DB_VERSION = '2';
 
 	/**
 	 * Option name holding the installed schema version (autoloaded).
@@ -47,6 +49,13 @@ final class Schema {
 	private const LOG_TABLE_BASE = 'fv_erh_404_log';
 
 	/**
+	 * Unprefixed name of the manual redirects table.
+	 *
+	 * @var string
+	 */
+	private const REDIRECTS_TABLE_BASE = 'fv_erh_redirects';
+
+	/**
 	 * Fully-prefixed name of the 404 log table.
 	 *
 	 * @return string
@@ -55,6 +64,17 @@ final class Schema {
 		global $wpdb;
 
 		return $wpdb->prefix . self::LOG_TABLE_BASE;
+	}
+
+	/**
+	 * Fully-prefixed name of the manual redirects table.
+	 *
+	 * @return string
+	 */
+	public static function redirects_table(): string {
+		global $wpdb;
+
+		return $wpdb->prefix . self::REDIRECTS_TABLE_BASE;
 	}
 
 	/**
@@ -82,7 +102,10 @@ final class Schema {
 			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		}
 
-		dbDelta( self::log_table_sql( self::log_table(), $wpdb->get_charset_collate() ) );
+		$charset_collate = $wpdb->get_charset_collate();
+
+		dbDelta( self::log_table_sql( self::log_table(), $charset_collate ) );
+		dbDelta( self::redirects_table_sql( self::redirects_table(), $charset_collate ) );
 
 		update_option( self::VERSION_OPTION, self::DB_VERSION, true );
 	}
@@ -114,6 +137,36 @@ final class Schema {
 			UNIQUE KEY url_hash (url_hash),
 			KEY last_seen (last_seen),
 			KEY classification (classification)
+		) {$charset_collate};";
+	}
+
+	/**
+	 * The CREATE TABLE statement for manual redirects, in dbDelta-compatible form.
+	 *
+	 * `source_hash` is the md5 of the normalized source pattern and carries the
+	 * UNIQUE key (same reasoning as `url_hash` on the log table: the pattern
+	 * itself can exceed every indexable length). `is_wildcard` is derived from
+	 * the source at save time so the matcher can split exact/wildcard rules
+	 * without re-parsing every pattern on every 404.
+	 *
+	 * @param string $table           Fully-prefixed table name.
+	 * @param string $charset_collate Result of `$wpdb->get_charset_collate()`.
+	 * @return string
+	 */
+	public static function redirects_table_sql( string $table, string $charset_collate ): string {
+		return "CREATE TABLE {$table} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			source_hash char(32) NOT NULL,
+			source text NOT NULL,
+			destination text NOT NULL,
+			is_wildcard tinyint(1) NOT NULL DEFAULT 0,
+			active tinyint(1) NOT NULL DEFAULT 1,
+			hit_count bigint(20) unsigned NOT NULL DEFAULT 0,
+			last_hit datetime NULL DEFAULT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY source_hash (source_hash),
+			KEY active (active)
 		) {$charset_collate};";
 	}
 }

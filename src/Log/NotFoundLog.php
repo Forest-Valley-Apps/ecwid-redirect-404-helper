@@ -35,11 +35,32 @@ final class NotFoundLog {
 	/**
 	 * Row status: captured, not yet handled by the merchant.
 	 *
-	 * (S5 adds the handled states; capture only ever writes this one.)
-	 *
 	 * @var string
 	 */
 	public const STATUS_NEW = 'new';
+
+	/**
+	 * Row status: the merchant created a redirect for this path.
+	 *
+	 * @var string
+	 */
+	public const STATUS_REDIRECTED = 'redirected';
+
+	/**
+	 * Sortable dashboard columns mapped to their SQL column.
+	 *
+	 * The whitelist is the injection guard: anything not listed here falls
+	 * back to `last_seen`.
+	 *
+	 * @var array<string,string>
+	 */
+	private const SORTABLE = array(
+		'url_path'       => 'url_path',
+		'classification' => 'classification',
+		'hit_count'      => 'hit_count',
+		'first_seen'     => 'first_seen',
+		'last_seen'      => 'last_seen',
+	);
 
 	/**
 	 * Default maximum number of log rows kept.
@@ -115,6 +136,185 @@ final class NotFoundLog {
 		if ( 1 === $result ) {
 			$this->prune();
 		}
+	}
+
+	/**
+	 * Query log rows for the dashboard.
+	 *
+	 * @param array $args {
+	 *     Optional query arguments.
+	 *
+	 *     @type string $search         Substring to match in `url_path`.
+	 *     @type string $classification Filter to one classification.
+	 *     @type string $status         Filter to one status.
+	 *     @type string $orderby        One of the sortable columns (default `last_seen`).
+	 *     @type string $order          'asc' or 'desc' (default 'desc').
+	 *     @type int    $per_page       Page size (default 20).
+	 *     @type int    $paged          1-based page number (default 1).
+	 * }
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function query( array $args = array() ): array {
+		global $wpdb;
+
+		list( $where_sql, $where_args ) = $this->build_where( $args );
+
+		$orderby = self::SORTABLE[ $args['orderby'] ?? '' ] ?? 'last_seen';
+		$order   = 'asc' === strtolower( (string) ( $args['order'] ?? '' ) ) ? 'ASC' : 'DESC';
+
+		$per_page = max( 1, (int) ( $args['per_page'] ?? 20 ) );
+		$offset   = ( max( 1, (int) ( $args['paged'] ?? 1 ) ) - 1 ) * $per_page;
+
+		$table = Schema::log_table();
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table from Schema::log_table(); orderby/order whitelisted above.
+				"SELECT * FROM {$table} {$where_sql} ORDER BY {$orderby} {$order}, id DESC LIMIT %d OFFSET %d",
+				array_merge( $where_args, array( $per_page, $offset ) )
+			),
+			ARRAY_A
+		);
+
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Count log rows matching the same filters as {@see self::query()}.
+	 *
+	 * @param array $args Filter arguments (search/classification/status).
+	 * @return int
+	 */
+	public function count( array $args = array() ): int {
+		global $wpdb;
+
+		list( $where_sql, $where_args ) = $this->build_where( $args );
+
+		$table = Schema::log_table();
+		$sql   = "SELECT COUNT(*) FROM {$table} {$where_sql}";
+
+		if ( array() !== $where_args ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- table from Schema::log_table(); placeholders built alongside their args.
+			$sql = $wpdb->prepare( $sql, $where_args );
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- prepared above when it carries placeholders.
+		return (int) $wpdb->get_var( $sql );
+	}
+
+	/**
+	 * Delete log rows by id.
+	 *
+	 * @param array<int,int> $ids Row ids.
+	 * @return void
+	 */
+	public function delete( array $ids ): void {
+		global $wpdb;
+
+		$ids = array_filter( array_map( 'intval', $ids ) );
+		if ( array() === $ids ) {
+			return;
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		$table        = Schema::log_table();
+
+		$wpdb->query(
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table from Schema::log_table(), %d placeholders generated to count.
+			$wpdb->prepare( "DELETE FROM {$table} WHERE id IN ({$placeholders})", $ids )
+		);
+	}
+
+	/**
+	 * Mark the log row for a path as redirected.
+	 *
+	 * No-op when the path was never logged (e.g. a redirect created from
+	 * scratch or a wildcard pattern).
+	 *
+	 * @param string $path Normalized path (a rule's exact source).
+	 * @return void
+	 */
+	public function mark_redirected( string $path ): void {
+		global $wpdb;
+
+		$wpdb->update(
+			Schema::log_table(),
+			array( 'status' => self::STATUS_REDIRECTED ),
+			array( 'url_hash' => md5( $path ) ),
+			array( '%s' ),
+			array( '%s' )
+		);
+	}
+
+	/**
+	 * Iterate every log row in chunks, newest first, for the CSV export.
+	 *
+	 * Keeps memory bounded at the chunk size instead of loading up to the
+	 * 10k-row cap at once.
+	 *
+	 * @param int $chunk_size Rows per SELECT.
+	 * @return \Generator<array<string,mixed>>
+	 */
+	public function all_chunked( int $chunk_size = 500 ): \Generator {
+		global $wpdb;
+
+		$chunk_size = max( 1, $chunk_size );
+		$table      = Schema::log_table();
+		$offset     = 0;
+
+		do {
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table().
+					"SELECT * FROM {$table} ORDER BY last_seen DESC, id DESC LIMIT %d OFFSET %d",
+					$chunk_size,
+					$offset
+				),
+				ARRAY_A
+			);
+
+			$rows = is_array( $rows ) ? $rows : array();
+
+			foreach ( $rows as $row ) {
+				yield $row;
+			}
+
+			$offset += $chunk_size;
+		} while ( count( $rows ) === $chunk_size );
+	}
+
+	/**
+	 * Build the WHERE clause + prepare args for the dashboard filters.
+	 *
+	 * @param array $args Filter arguments (search/classification/status).
+	 * @return array{0:string,1:array<int,mixed>} The SQL ('' when unfiltered) and its args.
+	 */
+	private function build_where( array $args ): array {
+		global $wpdb;
+
+		$clauses    = array();
+		$where_args = array();
+
+		if ( '' !== (string) ( $args['search'] ?? '' ) ) {
+			$clauses[]    = 'url_path LIKE %s';
+			$where_args[] = '%' . $wpdb->esc_like( (string) $args['search'] ) . '%';
+		}
+
+		if ( '' !== (string) ( $args['classification'] ?? '' ) ) {
+			$clauses[]    = 'classification = %s';
+			$where_args[] = (string) $args['classification'];
+		}
+
+		if ( '' !== (string) ( $args['status'] ?? '' ) ) {
+			$clauses[]    = 'status = %s';
+			$where_args[] = (string) $args['status'];
+		}
+
+		if ( array() === $clauses ) {
+			return array( '', array() );
+		}
+
+		return array( 'WHERE ' . implode( ' AND ', $clauses ), $where_args );
 	}
 
 	/**

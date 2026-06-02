@@ -18,8 +18,8 @@ use FV\WPEcwidRedirectHelper\Connection\EcwidPluginDiscovery;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The Settings → Redirect & 404 Helper screen and its connect/refresh/disconnect
- * actions.
+ * The Redirect & 404 → Settings screen and its connect/refresh/disconnect
+ * actions. Menu placement is owned by {@see Menu}.
  *
  * Credentials are discovered live from the Ecwid plugin every request; this
  * screen only lets the merchant opt in (Connect), re-verify + refresh the cached
@@ -81,30 +81,14 @@ final class SettingsPage {
 	}
 
 	/**
-	 * Register the admin menu and action handlers.
+	 * Register the action handlers (menu placement is owned by {@see Menu}).
 	 *
 	 * @return void
 	 */
 	public function register(): void {
-		add_action( 'admin_menu', array( $this, 'add_menu' ) );
 		add_action( 'admin_post_' . self::ACTION_CONNECT, array( $this, 'handle_connect' ) );
 		add_action( 'admin_post_' . self::ACTION_REFRESH, array( $this, 'handle_refresh' ) );
 		add_action( 'admin_post_' . self::ACTION_DISCONNECT, array( $this, 'handle_disconnect' ) );
-	}
-
-	/**
-	 * Add the settings page under the WordPress Settings menu.
-	 *
-	 * @return void
-	 */
-	public function add_menu(): void {
-		add_options_page(
-			__( 'Redirect & 404 Helper for Ecwid', 'ecwid-redirect-404-helper' ),
-			__( 'Redirect & 404 Helper', 'ecwid-redirect-404-helper' ),
-			self::CAPABILITY,
-			self::PAGE_SLUG,
-			array( $this, 'render_page' )
-		);
 	}
 
 	/**
@@ -286,7 +270,7 @@ final class SettingsPage {
 	 * @return string
 	 */
 	private function page_url(): string {
-		return admin_url( 'options-general.php?page=' . self::PAGE_SLUG );
+		return admin_url( 'admin.php?page=' . self::PAGE_SLUG );
 	}
 
 	/**

@@ -12,6 +12,7 @@ namespace FV\WPEcwidRedirectHelper\Capture;
 use FV\WPEcwidRedirectHelper\Api\BackendClient;
 use FV\WPEcwidRedirectHelper\Connection\ConnectionState;
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
+use FV\WPEcwidRedirectHelper\Request\RequestPath;
 use FV\WPEcwidRedirectHelper\Url\RuleMatcher;
 use FV\WPEcwidRedirectHelper\Url\UrlClassifier;
 
@@ -27,9 +28,9 @@ defined( 'ABSPATH' ) || exit;
  * which are never served from a page cache anyway.
  *
  * The stored path is normalized exactly like the redirect matcher normalizes
- * rule sources ({@see RuleMatcher::normalize_path()}: query string stripped,
- * leading slash, trailing slash trimmed), so the dashboard (S5) and the
- * matcher always talk about the same string.
+ * rule sources ({@see RequestPath::current()}: query string stripped, leading
+ * slash, trailing slash trimmed), so the dashboard, the manual-301 redirector
+ * and the matcher always talk about the same string.
  *
  * Ecwid-classified 404s are additionally reported to the hosted backend, but
  * only while the merchant is connected — clicking Connect is the explicit
@@ -108,7 +109,7 @@ final class NotFoundCapture {
 			return;
 		}
 
-		$path = $this->current_path();
+		$path = RequestPath::current( $this->matcher );
 		if ( '' === $path ) {
 			return;
 		}
@@ -125,29 +126,5 @@ final class NotFoundCapture {
 		// Fire-and-forget (non-blocking, 1s timeout) — never delays the render.
 		BackendClient::for_store( $this->state->store_id() )
 			->report_404( $path, '' !== $referrer ? $referrer : null );
-	}
-
-	/**
-	 * The normalized path of the current request ('' when unavailable).
-	 *
-	 * @return string
-	 */
-	private function current_path(): string {
-		if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
-			return '';
-		}
-
-		$raw = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
-
-		// Isolate the path component. This drops any scheme/host smuggled into
-		// the request target — a protocol-relative '//evil.example/x' would
-		// otherwise survive into the log with the foreign host intact — plus
-		// the query string (a real REQUEST_URI never carries a fragment).
-		$path = (string) wp_parse_url( $raw, PHP_URL_PATH );
-		if ( '' === $path || 0 !== strpos( $path, '/' ) ) {
-			return '';
-		}
-
-		return $this->matcher->normalize_path( $path );
 	}
 }

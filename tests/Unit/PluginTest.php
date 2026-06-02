@@ -43,7 +43,7 @@ final class PluginTest extends TestCase {
 		$this->assertSame( '0.1.0', Plugin::VERSION );
 	}
 
-	public function test_register_wires_admin_settings_in_admin(): void {
+	public function test_register_wires_admin_pages_in_admin(): void {
 		Functions\when( 'is_admin' )->justReturn( true );
 		// Schema is current — the admin-side update check must not migrate.
 		Functions\when( 'get_option' )->justReturn( Schema::DB_VERSION );
@@ -52,19 +52,24 @@ final class PluginTest extends TestCase {
 		Actions\expectAdded( 'admin_post_fv_erh_connect' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_refresh' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_disconnect' )->once();
+		Actions\expectAdded( 'admin_post_fv_erh_export_csv' )->once();
+		Actions\expectAdded( 'admin_post_fv_erh_redirect_add' )->once();
+		Actions\expectAdded( 'admin_post_fv_erh_redirect_toggle' )->once();
+		Actions\expectAdded( 'admin_post_fv_erh_redirect_delete' )->once();
 		Actions\expectAdded( 'template_redirect' )->never();
 
 		Plugin::instance()->register();
 	}
 
-	public function test_register_wires_404_capture_on_front_end(): void {
+	public function test_register_wires_redirector_and_404_capture_on_front_end(): void {
 		Functions\when( 'is_admin' )->justReturn( false );
 
 		Actions\expectAdded( 'admin_menu' )->never();
 		Actions\expectAdded( 'admin_post_fv_erh_connect' )->never();
 		Actions\expectAdded( 'admin_post_fv_erh_refresh' )->never();
 		Actions\expectAdded( 'admin_post_fv_erh_disconnect' )->never();
-		Actions\expectAdded( 'template_redirect' )->once();
+		// Once for the manual-301 redirector, once for the 404 capture.
+		Actions\expectAdded( 'template_redirect' )->twice();
 
 		Plugin::instance()->register();
 	}
@@ -75,7 +80,8 @@ final class PluginTest extends TestCase {
 		$wpdb->shouldReceive( 'get_charset_collate' )->andReturn( '' );
 		$GLOBALS['wpdb'] = $wpdb;
 
-		Functions\expect( 'dbDelta' )->once();
+		// Once per table: the 404 log and the manual redirects.
+		Functions\expect( 'dbDelta' )->twice();
 		Functions\expect( 'update_option' )
 			->once()
 			->with( Schema::VERSION_OPTION, Schema::DB_VERSION, true );

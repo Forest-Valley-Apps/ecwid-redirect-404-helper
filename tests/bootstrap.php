@@ -16,4 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', __DIR__ . '/' );
 }
 
+// WordPress's $wpdb result-format constant, used by the repositories.
+if ( ! defined( 'ARRAY_A' ) ) {
+	define( 'ARRAY_A', 'ARRAY_A' );
+}
+
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
