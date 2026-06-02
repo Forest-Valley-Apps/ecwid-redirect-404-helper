@@ -28,7 +28,8 @@ final class Schema {
 	/**
 	 * Current schema version. Bump on any table change.
 	 *
-	 * v1: 404 log table (S4). v2: + manual redirects table (S5).
+	 * Version 1: the 404 log table (S4). Version 2: adds the manual
+	 * redirects table (S5).
 	 *
 	 * @var string
 	 */

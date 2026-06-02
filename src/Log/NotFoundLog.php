@@ -169,7 +169,7 @@ final class NotFoundLog {
 
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table from Schema::log_table(); orderby/order whitelisted above.
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders -- table from Schema::log_table(); orderby/order whitelisted above; the WHERE placeholders are built alongside their args, which the sniff cannot count.
 				"SELECT * FROM {$table} {$where_sql} ORDER BY {$orderby} {$order}, id DESC LIMIT %d OFFSET %d",
 				array_merge( $where_args, array( $per_page, $offset ) )
 			),
@@ -220,7 +220,7 @@ final class NotFoundLog {
 		$table        = Schema::log_table();
 
 		$wpdb->query(
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table from Schema::log_table(), %d placeholders generated to count.
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders -- table from Schema::log_table(); %d placeholders generated to count, which the sniff cannot see.
 			$wpdb->prepare( "DELETE FROM {$table} WHERE id IN ({$placeholders})", $ids )
 		);
 	}
@@ -273,14 +273,15 @@ final class NotFoundLog {
 				ARRAY_A
 			);
 
-			$rows = is_array( $rows ) ? $rows : array();
+			$rows    = is_array( $rows ) ? $rows : array();
+			$fetched = count( $rows );
 
 			foreach ( $rows as $row ) {
 				yield $row;
 			}
 
 			$offset += $chunk_size;
-		} while ( count( $rows ) === $chunk_size );
+		} while ( $fetched === $chunk_size );
 	}
 
 	/**

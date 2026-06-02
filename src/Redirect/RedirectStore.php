@@ -148,7 +148,7 @@ final class RedirectStore {
 		$table        = Schema::redirects_table();
 
 		$wpdb->query(
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table from Schema::redirects_table(), %d placeholders generated to count.
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders -- table from Schema::redirects_table(); %d placeholders generated to count, which the sniff cannot see.
 			$wpdb->prepare( "DELETE FROM {$table} WHERE id IN ({$placeholders})", $ids )
 		);
 	}

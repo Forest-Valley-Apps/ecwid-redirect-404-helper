@@ -41,8 +41,8 @@ final class CsvExporter {
 	/**
 	 * Write the header line and every row to a stream.
 	 *
-	 * @param resource                       $stream Writable stream.
-	 * @param iterable<array<string,mixed>>  $rows   Log rows (any iterable, e.g. the chunked generator).
+	 * @param resource $stream Writable stream.
+	 * @param iterable $rows   Log rows (arrays keyed by column), e.g. the chunked generator.
 	 * @return void
 	 */
 	public function write( $stream, iterable $rows ): void {
