@@ -14,11 +14,12 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Thin client over the hosted Redirect & 404 Manager backend.
  *
- * Talks to the three **public** read/report endpoints only — never the
+ * Talks to the four **public** read/report endpoints only — never the
  * privileged admin write API (those endpoints sit behind Ecwid-iframe auth):
- *  - `GET  /api/storefront/rules/:storeId` — the resolved redirect ruleset.
- *  - `POST /api/storefront/404`            — report a captured 404.
- *  - `POST /api/storefront/hit`            — report a redirect hit.
+ *  - `GET  /api/storefront/rules/:storeId`   — the resolved redirect ruleset.
+ *  - `GET  /api/storefront/deleted/:storeId` — webhook-sourced deleted entity ids.
+ *  - `POST /api/storefront/404`              — report a captured 404.
+ *  - `POST /api/storefront/hit`              — report a redirect hit.
  *
  * The rules endpoint always serves the **full** ruleset inline
  * (`{ v, exact, wildcard, storeUrl?, baseUrl? }`); the backend resolves the
@@ -59,6 +60,32 @@ final class BackendClient {
 	 * @var int
 	 */
 	private const RULES_CACHE_TTL = 900;
+
+	/**
+	 * Transient key prefix for the cached deleted-entity ids (store id appended).
+	 *
+	 * @var string
+	 */
+	private const DELETED_TRANSIENT_PREFIX = 'fv_erh_deleted_';
+
+	/**
+	 * The deleted-entities endpoint's 404 marker for "store never installed
+	 * the hosted app" — the wire contract that separates that definite answer
+	 * from a meaningless routing 404 (see `docs/backend-deleted-entities-endpoint.md`).
+	 *
+	 * @var string
+	 */
+	public const ERROR_STORE_NOT_TRACKED = 'store-not-tracked';
+
+	/**
+	 * How long, in seconds, to cache the deleted-entity ids.
+	 *
+	 * Deletions are rare events and the verdict checker tolerates lag, so this
+	 * is cached longer than the ruleset.
+	 *
+	 * @var int
+	 */
+	private const DELETED_CACHE_TTL = 3600;
 
 	/**
 	 * Timeout, in seconds, for the (blocking) rules fetch.
@@ -204,6 +231,54 @@ final class BackendClient {
 	 */
 	public function clear_rules_cache(): void {
 		delete_transient( $this->rules_transient_key() );
+	}
+
+	/**
+	 * Fetch the webhook-sourced deleted-entity ids for this store.
+	 *
+	 * The hosted app receives Ecwid `*.deleted` webhooks for every store that
+	 * installed it, which is the authoritative deleted-vs-never-existed signal
+	 * the public catalog API cannot provide. This endpoint is public read-only,
+	 * like the ruleset.
+	 *
+	 * The answer is a tri-state, so the verdict checker can stay honest:
+	 *  - `tracked === true`  — the store is known to the backend; `products` /
+	 *    `categories` list the entity ids deleted since the app was installed.
+	 *  - `tracked === false` — HTTP 404 with the endpoint's marker body: the
+	 *    store never installed the hosted app, so no deletion history exists.
+	 *  - `null`              — transport/status/parse error; indeterminate, not
+	 *    cached, retried on the next call.
+	 *
+	 * @param bool $force_refresh Bypass and refresh the transient cache.
+	 * @return array{tracked:bool,products:array<int,int>,categories:array<int,int>}|null
+	 */
+	public function get_deleted_entities( bool $force_refresh = false ): ?array {
+		$cache_key = $this->deleted_transient_key();
+
+		if ( ! $force_refresh ) {
+			$cached = get_transient( $cache_key );
+			if ( is_array( $cached ) ) {
+				return $cached;
+			}
+		}
+
+		$result = $this->fetch_deleted_entities();
+		if ( null === $result ) {
+			return null;
+		}
+
+		set_transient( $cache_key, $result, self::DELETED_CACHE_TTL );
+
+		return $result;
+	}
+
+	/**
+	 * Delete the cached deleted-entity ids for this store.
+	 *
+	 * @return void
+	 */
+	public function clear_deleted_cache(): void {
+		delete_transient( $this->deleted_transient_key() );
 	}
 
 	/**
@@ -354,6 +429,80 @@ final class BackendClient {
 	}
 
 	/**
+	 * Fetch and parse the deleted-entity ids from the backend, bypassing the cache.
+	 *
+	 * @return array{tracked:bool,products:array<int,int>,categories:array<int,int>}|null
+	 *         Null on any transport error, unexpected status, or parse failure.
+	 */
+	private function fetch_deleted_entities(): ?array {
+		$response = wp_remote_get(
+			$this->deleted_url(),
+			array(
+				'timeout' => self::RULES_TIMEOUT,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return null;
+		}
+
+		$status = (int) wp_remote_retrieve_response_code( $response );
+
+		// A 404 is only the definite "store never installed the hosted app"
+		// answer when it carries the endpoint's own marker body — a routing
+		// 404 (endpoint not deployed yet, URL rewrite, proxy) must stay
+		// indeterminate or it would write wrong verdicts for up to a week.
+		if ( 404 === $status ) {
+			$decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+
+			if ( is_array( $decoded ) && self::ERROR_STORE_NOT_TRACKED === ( $decoded['error'] ?? '' ) ) {
+				return array(
+					'tracked'    => false,
+					'products'   => array(),
+					'categories' => array(),
+				);
+			}
+
+			return null;
+		}
+
+		if ( 200 !== $status ) {
+			return null;
+		}
+
+		$decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $decoded )
+			|| ! isset( $decoded['products'] ) || ! is_array( $decoded['products'] )
+			|| ! isset( $decoded['categories'] ) || ! is_array( $decoded['categories'] ) ) {
+			return null;
+		}
+
+		return array(
+			'tracked'    => true,
+			'products'   => $this->id_list( $decoded['products'] ),
+			'categories' => $this->id_list( $decoded['categories'] ),
+		);
+	}
+
+	/**
+	 * Normalize a decoded id list to positive integers.
+	 *
+	 * @param array<int,mixed> $raw Decoded JSON array.
+	 * @return array<int,int>
+	 */
+	private function id_list( array $raw ): array {
+		$ids = array();
+
+		foreach ( $raw as $value ) {
+			if ( is_numeric( $value ) && (int) $value > 0 ) {
+				$ids[] = (int) $value;
+			}
+		}
+
+		return $ids;
+	}
+
+	/**
 	 * The empty/no-rules fallback, shaped like the backend's own empty answer.
 	 *
 	 * @return array{v:int,exact:array<int,mixed>,wildcard:array<int,mixed>}
@@ -376,11 +525,29 @@ final class BackendClient {
 	}
 
 	/**
+	 * Full URL of the deleted-entities endpoint for this store.
+	 *
+	 * @return string
+	 */
+	private function deleted_url(): string {
+		return $this->base_url . '/api/storefront/deleted/' . $this->store_id;
+	}
+
+	/**
 	 * Transient key for this store's cached ruleset.
 	 *
 	 * @return string
 	 */
 	private function rules_transient_key(): string {
 		return self::RULES_TRANSIENT_PREFIX . $this->store_id;
+	}
+
+	/**
+	 * Transient key for this store's cached deleted-entity ids.
+	 *
+	 * @return string
+	 */
+	private function deleted_transient_key(): string {
+		return self::DELETED_TRANSIENT_PREFIX . $this->store_id;
 	}
 }

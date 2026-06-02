@@ -29,11 +29,12 @@ final class Schema {
 	 * Current schema version. Bump on any table change.
 	 *
 	 * Version 1: the 404 log table (S4). Version 2: adds the manual
-	 * redirects table (S5).
+	 * redirects table (S5). Version 3: adds the catalog-verdict columns to
+	 * the log table (S6).
 	 *
 	 * @var string
 	 */
-	public const DB_VERSION = '2';
+	public const DB_VERSION = '3';
 
 	/**
 	 * Option name holding the installed schema version (autoloaded).
@@ -116,7 +117,11 @@ final class Schema {
 	 *
 	 * `url_hash` is the md5 of the normalized path and carries the UNIQUE key —
 	 * the path itself can exceed every indexable length. `last_seen` is indexed
-	 * for retention pruning, `classification` for the dashboard filters (S5).
+	 * for retention pruning, `classification` for the dashboard filters (S5),
+	 * `verdict` for the catalog-verdict filter (S6). `verdict` '' means
+	 * "not checked yet"; `verdict_checked_at` backs the periodic re-check.
+	 * The compound `entity` key serves the verdict checker, which selects and
+	 * updates rows by (classification, entity_id).
 	 *
 	 * @param string $table           Fully-prefixed table name.
 	 * @param string $charset_collate Result of `$wpdb->get_charset_collate()`.
@@ -131,13 +136,17 @@ final class Schema {
 			classification varchar(20) NOT NULL DEFAULT 'wp-page',
 			entity_id bigint(20) unsigned NOT NULL DEFAULT 0,
 			status varchar(20) NOT NULL DEFAULT 'new',
+			verdict varchar(20) NOT NULL DEFAULT '',
+			verdict_checked_at datetime NULL DEFAULT NULL,
 			hit_count bigint(20) unsigned NOT NULL DEFAULT 1,
 			first_seen datetime NOT NULL,
 			last_seen datetime NOT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY url_hash (url_hash),
 			KEY last_seen (last_seen),
-			KEY classification (classification)
+			KEY classification (classification),
+			KEY verdict (verdict),
+			KEY entity (classification,entity_id)
 		) {$charset_collate};";
 	}
 

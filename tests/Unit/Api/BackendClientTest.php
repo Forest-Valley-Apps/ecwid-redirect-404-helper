@@ -260,6 +260,160 @@ final class BackendClientTest extends TestCase {
 		$this->assertFalse( $this->client()->ping() );
 	}
 
+	public function test_get_deleted_entities_parses_and_caches_tracked_store(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+
+		$json = wp_json_encode_stub(
+			array(
+				'v'          => 1,
+				'products'   => array( 111, '222', 0, -5, 'junk' ),
+				'categories' => array( 9 ),
+			)
+		);
+
+		Functions\expect( 'wp_remote_get' )
+			->once()
+			->with(
+				'https://redirect-manager-dev.up.railway.app/api/storefront/deleted/' . self::STORE_ID,
+				\Mockery::type( 'array' )
+			)
+			->andReturn( $this->rules_response( $json ) );
+
+		Functions\expect( 'set_transient' )
+			->once()
+			->with( 'fv_erh_deleted_' . self::STORE_ID, \Mockery::type( 'array' ), 3600 );
+
+		$result = $this->client()->get_deleted_entities();
+
+		$this->assertTrue( $result['tracked'] );
+		// Non-numeric / non-positive entries are dropped, numeric strings kept.
+		$this->assertSame( array( 111, 222 ), $result['products'] );
+		$this->assertSame( array( 9 ), $result['categories'] );
+	}
+
+	public function test_get_deleted_entities_returns_cached_value_without_http(): void {
+		$cached = array(
+			'tracked'    => true,
+			'products'   => array( 1 ),
+			'categories' => array(),
+		);
+		Functions\when( 'get_transient' )->justReturn( $cached );
+
+		Functions\expect( 'wp_remote_get' )->never();
+
+		$this->assertSame( $cached, $this->client()->get_deleted_entities() );
+	}
+
+	public function test_get_deleted_entities_force_refresh_bypasses_cache(): void {
+		Functions\expect( 'get_transient' )->never();
+		Functions\when( 'set_transient' )->justReturn( true );
+
+		$json = wp_json_encode_stub(
+			array(
+				'v'          => 1,
+				'products'   => array(),
+				'categories' => array(),
+			)
+		);
+		Functions\expect( 'wp_remote_get' )->once()->andReturn( $this->rules_response( $json ) );
+
+		$result = $this->client()->get_deleted_entities( true );
+
+		$this->assertTrue( $result['tracked'] );
+		$this->assertSame( array(), $result['products'] );
+	}
+
+	public function test_get_deleted_entities_marked_404_means_untracked_store_and_is_cached(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'wp_remote_get' )->justReturn(
+			array(
+				'code' => 404,
+				'body' => wp_json_encode_stub( array( 'error' => 'store-not-tracked' ) ),
+			)
+		);
+
+		// "Never installed the app" is a definite answer worth caching too.
+		Functions\expect( 'set_transient' )
+			->once()
+			->with( 'fv_erh_deleted_' . self::STORE_ID, \Mockery::type( 'array' ), 3600 );
+
+		$result = $this->client()->get_deleted_entities();
+
+		$this->assertFalse( $result['tracked'] );
+		$this->assertSame( array(), $result['products'] );
+		$this->assertSame( array(), $result['categories'] );
+	}
+
+	public function test_get_deleted_entities_unmarked_404_stays_indeterminate(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		// A routing 404 (endpoint not deployed, proxy) carries no marker body —
+		// it must NOT be read as "store not tracked".
+		Functions\when( 'wp_remote_get' )->justReturn(
+			array(
+				'code' => 404,
+				'body' => wp_json_encode_stub(
+					array(
+						'message'    => 'Route GET:/api/storefront/deleted/130416012 not found',
+						'error'      => 'Not Found',
+						'statusCode' => 404,
+					)
+				),
+			)
+		);
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_deleted_entities() );
+	}
+
+	public function test_get_deleted_entities_null_and_uncached_on_wp_error(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'is_wp_error' )->justReturn( true );
+		Functions\when( 'wp_remote_get' )->justReturn( 'an-error' );
+
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_deleted_entities() );
+	}
+
+	public function test_get_deleted_entities_null_on_unexpected_status(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'wp_remote_get' )->justReturn(
+			array(
+				'code' => 503,
+				'body' => 'service unavailable',
+			)
+		);
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_deleted_entities() );
+	}
+
+	public function test_get_deleted_entities_null_on_malformed_json(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'wp_remote_get' )->justReturn( $this->rules_response( '{not-json' ) );
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_deleted_entities() );
+	}
+
+	public function test_get_deleted_entities_null_on_missing_id_lists(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'wp_remote_get' )->justReturn(
+			$this->rules_response( wp_json_encode_stub( array( 'v' => 1 ) ) )
+		);
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_deleted_entities() );
+	}
+
+	public function test_clear_deleted_cache_deletes_the_transient(): void {
+		Functions\expect( 'delete_transient' )
+			->once()
+			->with( 'fv_erh_deleted_' . self::STORE_ID );
+
+		$this->client()->clear_deleted_cache();
+	}
+
 	public function test_report_404_posts_non_blocking_with_referrer(): void {
 		$captured = array();
 		Functions\expect( 'wp_remote_post' )

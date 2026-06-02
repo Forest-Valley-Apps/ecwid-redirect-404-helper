@@ -47,6 +47,8 @@ final class PluginTest extends TestCase {
 		Functions\when( 'is_admin' )->justReturn( true );
 		// Schema is current — the admin-side update check must not migrate.
 		Functions\when( 'get_option' )->justReturn( Schema::DB_VERSION );
+		// Cron already scheduled — no re-scheduling from the admin self-heal.
+		Functions\when( 'wp_next_scheduled' )->justReturn( time() + 100 );
 
 		Actions\expectAdded( 'admin_menu' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_connect' )->once();
@@ -56,6 +58,10 @@ final class PluginTest extends TestCase {
 		Actions\expectAdded( 'admin_post_fv_erh_redirect_add' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_redirect_toggle' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_redirect_delete' )->once();
+		Actions\expectAdded( 'admin_post_fv_erh_dismiss_collisions' )->once();
+		Actions\expectAdded( 'admin_notices' )->once();
+		Actions\expectAdded( 'fv_erh_hourly_tasks' )->once();
+		Actions\expectAdded( 'save_post' )->once();
 		Actions\expectAdded( 'template_redirect' )->never();
 
 		Plugin::instance()->register();
@@ -68,13 +74,16 @@ final class PluginTest extends TestCase {
 		Actions\expectAdded( 'admin_post_fv_erh_connect' )->never();
 		Actions\expectAdded( 'admin_post_fv_erh_refresh' )->never();
 		Actions\expectAdded( 'admin_post_fv_erh_disconnect' )->never();
+		Actions\expectAdded( 'admin_notices' )->never();
+		// The cron callback must exist on every request type.
+		Actions\expectAdded( 'fv_erh_hourly_tasks' )->once();
 		// Once for the manual-301 redirector, once for the 404 capture.
 		Actions\expectAdded( 'template_redirect' )->twice();
 
 		Plugin::instance()->register();
 	}
 
-	public function test_activate_migrates_the_schema(): void {
+	public function test_activate_migrates_the_schema_and_schedules_cron(): void {
 		$wpdb         = Mockery::mock( 'wpdb' );
 		$wpdb->prefix = 'wp_';
 		$wpdb->shouldReceive( 'get_charset_collate' )->andReturn( '' );
@@ -85,9 +94,21 @@ final class PluginTest extends TestCase {
 		Functions\expect( 'update_option' )
 			->once()
 			->with( Schema::VERSION_OPTION, Schema::DB_VERSION, true );
+		Functions\expect( 'wp_next_scheduled' )->once()->andReturn( false );
+		Functions\expect( 'wp_schedule_event' )
+			->once()
+			->with( Mockery::type( 'int' ), 'hourly', 'fv_erh_hourly_tasks' );
 
 		Plugin::activate();
 
 		unset( $GLOBALS['wpdb'] );
+	}
+
+	public function test_deactivate_clears_the_cron_event(): void {
+		Functions\expect( 'wp_clear_scheduled_hook' )
+			->once()
+			->with( 'fv_erh_hourly_tasks' );
+
+		Plugin::deactivate();
 	}
 }

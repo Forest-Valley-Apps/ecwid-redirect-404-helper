@@ -11,6 +11,7 @@ namespace FV\WPEcwidRedirectHelper\Admin;
 
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
 use FV\WPEcwidRedirectHelper\Url\UrlClassifier;
+use FV\WPEcwidRedirectHelper\Verdict\VerdictChecker;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -76,6 +77,7 @@ final class LogListTable extends \WP_List_Table {
 			'cb'             => '<input type="checkbox" />',
 			'url_path'       => __( 'URL', 'ecwid-redirect-404-helper' ),
 			'classification' => __( 'Type', 'ecwid-redirect-404-helper' ),
+			'verdict'        => __( 'Catalog', 'ecwid-redirect-404-helper' ),
 			'hit_count'      => __( 'Hits', 'ecwid-redirect-404-helper' ),
 			'referrer'       => __( 'Last referrer', 'ecwid-redirect-404-helper' ),
 			'status'         => __( 'Status', 'ecwid-redirect-404-helper' ),
@@ -155,6 +157,18 @@ final class LogListTable extends \WP_List_Table {
 				'<option value="%1$s"%2$s>%3$s</option>',
 				esc_attr( $value ),
 				selected( $args['classification'] ?? '', $value, false ),
+				esc_html( $label )
+			);
+		}
+		echo '</select>';
+
+		echo '<select name="verdict">';
+		echo '<option value="">' . esc_html__( 'All catalog verdicts', 'ecwid-redirect-404-helper' ) . '</option>';
+		foreach ( self::verdict_labels() as $value => $label ) {
+			printf(
+				'<option value="%1$s"%2$s>%3$s</option>',
+				esc_attr( $value ),
+				selected( $args['verdict'] ?? '', $value, false ),
 				esc_html( $label )
 			);
 		}
@@ -260,6 +274,30 @@ final class LogListTable extends \WP_List_Table {
 	}
 
 	/**
+	 * Catalog-verdict column: a colored badge, or a dash when unchecked.
+	 *
+	 * @param array $item Log row.
+	 * @return string
+	 */
+	protected function column_verdict( $item ): string {
+		$verdict = (string) ( $item['verdict'] ?? '' );
+
+		if ( '' === $verdict ) {
+			return '<span aria-hidden="true">&#8212;</span>';
+		}
+
+		$labels = self::verdict_labels();
+		$titles = self::verdict_titles();
+
+		return sprintf(
+			'<span class="fv-erh-badge fv-erh-badge--verdict-%1$s" title="%2$s">%3$s</span>',
+			esc_attr( $verdict ),
+			esc_attr( $titles[ $verdict ] ?? '' ),
+			esc_html( $labels[ $verdict ] ?? $verdict )
+		);
+	}
+
+	/**
 	 * Status column.
 	 *
 	 * @param array $item Log row.
@@ -321,6 +359,34 @@ final class LogListTable extends \WP_List_Table {
 		return array(
 			NotFoundLog::STATUS_NEW        => __( 'New', 'ecwid-redirect-404-helper' ),
 			NotFoundLog::STATUS_REDIRECTED => __( 'Redirected', 'ecwid-redirect-404-helper' ),
+		);
+	}
+
+	/**
+	 * Human labels for the catalog-verdict values.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function verdict_labels(): array {
+		return array(
+			VerdictChecker::VERDICT_IN_CATALOG     => __( 'In catalog — broken link', 'ecwid-redirect-404-helper' ),
+			VerdictChecker::VERDICT_DELETED        => __( 'Deleted', 'ecwid-redirect-404-helper' ),
+			VerdictChecker::VERDICT_NEVER_EXISTED  => __( 'Never existed', 'ecwid-redirect-404-helper' ),
+			VerdictChecker::VERDICT_NOT_IN_CATALOG => __( 'Not in catalog', 'ecwid-redirect-404-helper' ),
+		);
+	}
+
+	/**
+	 * Hover explanations for the catalog-verdict badges.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function verdict_titles(): array {
+		return array(
+			VerdictChecker::VERDICT_IN_CATALOG     => __( 'This product/category is live in your Ecwid catalog — the URL or link pointing here is what is broken.', 'ecwid-redirect-404-helper' ),
+			VerdictChecker::VERDICT_DELETED        => __( 'This item was deleted from your Ecwid catalog (deletion on record in Redirect & 404 Manager).', 'ecwid-redirect-404-helper' ),
+			VerdictChecker::VERDICT_NEVER_EXISTED  => __( 'No item with this id is on record — most likely a mistyped or fabricated link. (Items deleted before Redirect & 404 Manager was installed also show here.)', 'ecwid-redirect-404-helper' ),
+			VerdictChecker::VERDICT_NOT_IN_CATALOG => __( 'Not in your Ecwid catalog. Install the Redirect & 404 Manager app to tell deleted items apart from mistyped links.', 'ecwid-redirect-404-helper' ),
 		);
 	}
 }

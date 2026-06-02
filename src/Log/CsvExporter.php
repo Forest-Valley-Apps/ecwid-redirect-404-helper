@@ -31,6 +31,7 @@ final class CsvExporter {
 		'url_path',
 		'classification',
 		'entity_id',
+		'verdict',
 		'status',
 		'hit_count',
 		'first_seen',

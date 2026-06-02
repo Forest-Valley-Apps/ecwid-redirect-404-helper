@@ -49,7 +49,7 @@ final class CsvExporterTest extends TestCase {
 		rewind( $stream );
 
 		$this->assertSame(
-			array( 'url_path', 'classification', 'entity_id', 'status', 'hit_count', 'first_seen', 'last_seen', 'referrer' ),
+			array( 'url_path', 'classification', 'entity_id', 'verdict', 'status', 'hit_count', 'first_seen', 'last_seen', 'referrer' ),
 			fgetcsv( $stream )
 		);
 

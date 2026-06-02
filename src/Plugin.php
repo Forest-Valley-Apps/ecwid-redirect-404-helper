@@ -11,6 +11,9 @@ namespace FV\WPEcwidRedirectHelper;
 
 use FV\WPEcwidRedirectHelper\Admin\Menu;
 use FV\WPEcwidRedirectHelper\Capture\NotFoundCapture;
+use FV\WPEcwidRedirectHelper\Collision\CollisionNotice;
+use FV\WPEcwidRedirectHelper\Collision\CollisionScanner;
+use FV\WPEcwidRedirectHelper\Cron\Tasks;
 use FV\WPEcwidRedirectHelper\Log\Schema;
 use FV\WPEcwidRedirectHelper\Redirect\Redirector;
 
@@ -63,12 +66,22 @@ final class Plugin {
 	 * @return void
 	 */
 	public function register(): void {
+		// The cron callback must exist on every request type — WP-Cron requests
+		// are neither admin nor ordinary front-end.
+		( new Tasks() )->register();
+
+		// Slug saves happen via wp-admin AND the REST API (Gutenberg), so the
+		// collision-cache invalidation hook is registered unconditionally too.
+		add_action( 'save_post', array( new CollisionScanner(), 'maybe_invalidate' ), 10, 2 );
+
 		if ( is_admin() ) {
 			// Covers plugin updates, which do not fire the activation hook.
 			// Costs one autoloaded-option compare on admin requests only.
 			Schema::maybe_migrate();
+			Tasks::ensure_scheduled();
 
 			( new Menu() )->register();
+			( new CollisionNotice() )->register();
 
 			return;
 		}
@@ -81,20 +94,21 @@ final class Plugin {
 	}
 
 	/**
-	 * Activation callback: create/upgrade the plugin tables.
+	 * Activation callback: create/upgrade the plugin tables, schedule cron.
 	 *
 	 * @return void
 	 */
 	public static function activate(): void {
 		Schema::migrate();
+		Tasks::ensure_scheduled();
 	}
 
 	/**
-	 * Deactivation callback. No-op for the scaffold.
+	 * Deactivation callback: remove the scheduled cron event.
 	 *
 	 * @return void
 	 */
 	public static function deactivate(): void {
-		// Intentionally empty.
+		Tasks::unschedule();
 	}
 }

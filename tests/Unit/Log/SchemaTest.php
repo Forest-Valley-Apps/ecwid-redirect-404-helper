@@ -42,11 +42,13 @@ final class SchemaTest extends WpdbTestCase {
 		$sql = Schema::log_table_sql( 'wp_fv_erh_404_log', 'DEFAULT CHARACTER SET utf8mb4' );
 
 		$this->assertStringContainsString( 'CREATE TABLE wp_fv_erh_404_log', $sql );
-		foreach ( array( 'url_hash', 'url_path', 'referrer', 'classification', 'entity_id', 'status', 'hit_count', 'first_seen', 'last_seen' ) as $column ) {
+		foreach ( array( 'url_hash', 'url_path', 'referrer', 'classification', 'entity_id', 'status', 'verdict', 'verdict_checked_at', 'hit_count', 'first_seen', 'last_seen' ) as $column ) {
 			$this->assertStringContainsString( $column, $sql );
 		}
 		$this->assertStringContainsString( 'UNIQUE KEY url_hash (url_hash)', $sql );
 		$this->assertStringContainsString( 'KEY last_seen (last_seen)', $sql );
+		$this->assertStringContainsString( 'KEY verdict (verdict)', $sql );
+		$this->assertStringContainsString( 'KEY entity (classification,entity_id)', $sql );
 		$this->assertStringContainsString( 'PRIMARY KEY  (id)', $sql );
 		$this->assertStringContainsString( 'DEFAULT CHARACTER SET utf8mb4', $sql );
 	}

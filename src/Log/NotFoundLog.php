@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace FV\WPEcwidRedirectHelper\Log;
 
+use FV\WPEcwidRedirectHelper\Url\UrlClassifier;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -70,6 +72,18 @@ final class NotFoundLog {
 	 * @var int
 	 */
 	private const DEFAULT_MAX_ROWS = 10000;
+
+	/**
+	 * Shared WHERE fragment selecting Ecwid entities with a missing or stale
+	 * verdict. Placeholders, in order: product type, category type, the
+	 * stale-before cutoff. Used by {@see self::entities_needing_verdict()} and
+	 * {@see self::count_entities_needing_verdict()} so the two can never drift.
+	 *
+	 * @var string
+	 */
+	private const NEEDS_VERDICT_WHERE = "WHERE classification IN (%s, %s)
+					AND entity_id > 0
+					AND (verdict = '' OR verdict_checked_at IS NULL OR verdict_checked_at < %s)";
 
 	/**
 	 * Max length stored for a path/referrer.
@@ -147,6 +161,7 @@ final class NotFoundLog {
 	 *     @type string $search         Substring to match in `url_path`.
 	 *     @type string $classification Filter to one classification.
 	 *     @type string $status         Filter to one status.
+	 *     @type string $verdict        Filter to one catalog verdict.
 	 *     @type string $orderby        One of the sortable columns (default `last_seen`).
 	 *     @type string $order          'asc' or 'desc' (default 'desc').
 	 *     @type int    $per_page       Page size (default 20).
@@ -248,6 +263,104 @@ final class NotFoundLog {
 	}
 
 	/**
+	 * Distinct Ecwid entities whose verdict is missing or stale, neediest first.
+	 *
+	 * Groups by (classification, entity_id) because several logged paths can
+	 * point at the same entity — the verdict checker spends one catalog lookup
+	 * per entity, not per row. Entities with any unchecked row come first, then
+	 * the stalest.
+	 *
+	 * @param string $stale_before Re-check verdicts older than this GMT datetime.
+	 * @param int    $limit        Maximum number of entities returned.
+	 * @return array<int,array{classification:string,entity_id:int}>
+	 */
+	public function entities_needing_verdict( string $stale_before, int $limit ): array {
+		global $wpdb;
+
+		$table = Schema::log_table();
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table(); WHERE fragment is a static literal.
+				"SELECT classification, entity_id FROM {$table}
+				" . self::NEEDS_VERDICT_WHERE . "
+				GROUP BY classification, entity_id
+				ORDER BY MAX(verdict = '') DESC, MIN(verdict_checked_at) ASC
+				LIMIT %d",
+				UrlClassifier::TYPE_PRODUCT,
+				UrlClassifier::TYPE_CATEGORY,
+				$stale_before,
+				max( 1, $limit )
+			),
+			ARRAY_A
+		);
+
+		if ( ! is_array( $rows ) ) {
+			return array();
+		}
+
+		return array_map(
+			static function ( array $row ): array {
+				return array(
+					'classification' => (string) $row['classification'],
+					'entity_id'      => (int) $row['entity_id'],
+				);
+			},
+			$rows
+		);
+	}
+
+	/**
+	 * Count the distinct Ecwid entities whose verdict is missing or stale.
+	 *
+	 * @param string $stale_before Re-check verdicts older than this GMT datetime.
+	 * @return int
+	 */
+	public function count_entities_needing_verdict( string $stale_before ): int {
+		global $wpdb;
+
+		$table = Schema::log_table();
+
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table(); WHERE fragment is a static literal.
+				"SELECT COUNT(DISTINCT classification, entity_id) FROM {$table}
+				" . self::NEEDS_VERDICT_WHERE,
+				UrlClassifier::TYPE_PRODUCT,
+				UrlClassifier::TYPE_CATEGORY,
+				$stale_before
+			)
+		);
+	}
+
+	/**
+	 * Record a catalog verdict on every log row pointing at an entity.
+	 *
+	 * @param string $classification Entity classification (product/category).
+	 * @param int    $entity_id      Ecwid entity id.
+	 * @param string $verdict        One of the VerdictChecker VERDICT_* values.
+	 * @param string $checked_at     GMT datetime of the check.
+	 * @return void
+	 */
+	public function set_verdict( string $classification, int $entity_id, string $verdict, string $checked_at ): void {
+		global $wpdb;
+
+		$wpdb->update(
+			Schema::log_table(),
+			array(
+				'verdict'            => $verdict,
+				'verdict_checked_at' => $checked_at,
+			),
+			array(
+				'classification' => $classification,
+				'entity_id'      => $entity_id,
+			),
+			array( '%s', '%s' ),
+			array( '%s', '%d' )
+		);
+	}
+
+	/**
 	 * Iterate every log row in chunks, newest first, for the CSV export.
 	 *
 	 * Keeps memory bounded at the chunk size instead of loading up to the
@@ -310,6 +423,11 @@ final class NotFoundLog {
 		if ( '' !== (string) ( $args['status'] ?? '' ) ) {
 			$clauses[]    = 'status = %s';
 			$where_args[] = (string) $args['status'];
+		}
+
+		if ( '' !== (string) ( $args['verdict'] ?? '' ) ) {
+			$clauses[]    = 'verdict = %s';
+			$where_args[] = (string) $args['verdict'];
 		}
 
 		if ( array() === $clauses ) {
