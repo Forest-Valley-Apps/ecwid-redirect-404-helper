@@ -26,6 +26,9 @@ final class RedirectorTest extends WpdbTestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
+		// record_hit()'s UPDATE; the tests assert via the captured prepare() calls.
+		$this->wpdb->shouldReceive( 'query' )->andReturn( 1 )->byDefault();
+
 		Functions\when( 'wp_unslash' )->returnArg();
 		Functions\when( 'sanitize_text_field' )->returnArg();
 		Functions\when( 'wp_parse_url' )->alias(
