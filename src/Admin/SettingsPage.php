@@ -44,21 +44,21 @@ final class SettingsPage {
 	private const CAPABILITY = 'manage_options';
 
 	/**
-	 * admin-post action: verify and connect.
+	 * The admin-post action that verifies and connects.
 	 *
 	 * @var string
 	 */
 	private const ACTION_CONNECT = 'fv_erh_connect';
 
 	/**
-	 * admin-post action: re-verify and refresh the cached ruleset.
+	 * The admin-post action that re-verifies and refreshes the cached ruleset.
 	 *
 	 * @var string
 	 */
 	private const ACTION_REFRESH = 'fv_erh_refresh';
 
 	/**
-	 * admin-post action: disconnect.
+	 * The admin-post action that disconnects.
 	 *
 	 * @var string
 	 */
