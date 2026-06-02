@@ -168,8 +168,9 @@ final class NotFoundLog {
 		$table = Schema::log_table();
 
 		$rows = $wpdb->get_results(
+			// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the WHERE placeholders and their args are built together; the sniff cannot count them.
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders -- table from Schema::log_table(); orderby/order whitelisted above; the WHERE placeholders are built alongside their args, which the sniff cannot count.
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table from Schema::log_table(); orderby/order whitelisted above.
 				"SELECT * FROM {$table} {$where_sql} ORDER BY {$orderby} {$order}, id DESC LIMIT %d OFFSET %d",
 				array_merge( $where_args, array( $per_page, $offset ) )
 			),
