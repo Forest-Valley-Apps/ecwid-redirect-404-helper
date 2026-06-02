@@ -213,6 +213,53 @@ final class BackendClientTest extends TestCase {
 		$this->client()->clear_rules_cache();
 	}
 
+	public function test_ping_true_on_valid_ruleset_primes_cache_without_reading_it(): void {
+		$json = wp_json_encode_stub(
+			array(
+				'v'        => 2,
+				'exact'    => array(),
+				'wildcard' => array(),
+			)
+		);
+		Functions\when( 'wp_remote_get' )->justReturn( $this->rules_response( $json ) );
+
+		// A ping never reads the cache (a cached copy must not mask a dead
+		// backend) but primes it on success so no second fetch is needed.
+		Functions\expect( 'get_transient' )->never();
+		Functions\expect( 'set_transient' )
+			->once()
+			->with( 'fv_erh_rules_' . self::STORE_ID, \Mockery::type( 'array' ), 900 );
+
+		$this->assertTrue( $this->client()->ping() );
+	}
+
+	public function test_ping_false_on_non_200(): void {
+		Functions\when( 'wp_remote_get' )->justReturn(
+			array(
+				'code' => 404,
+				'body' => 'not found',
+			)
+		);
+
+		// A failed ping must not cache anything.
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertFalse( $this->client()->ping() );
+	}
+
+	public function test_ping_false_on_wp_error(): void {
+		Functions\when( 'is_wp_error' )->justReturn( true );
+		Functions\when( 'wp_remote_get' )->justReturn( 'an-error' );
+
+		$this->assertFalse( $this->client()->ping() );
+	}
+
+	public function test_ping_false_on_malformed_json(): void {
+		Functions\when( 'wp_remote_get' )->justReturn( $this->rules_response( '{not-json' ) );
+
+		$this->assertFalse( $this->client()->ping() );
+	}
+
 	public function test_report_404_posts_non_blocking_with_referrer(): void {
 		$captured = array();
 		Functions\expect( 'wp_remote_post' )

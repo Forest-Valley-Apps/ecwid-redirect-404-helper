@@ -129,14 +129,7 @@ final class BackendClient {
 			}
 		}
 
-		$response = wp_remote_get(
-			$this->rules_url(),
-			array(
-				'timeout' => self::RULES_TIMEOUT,
-			)
-		);
-
-		$rules = $this->parse_rules_response( $response );
+		$rules = $this->fetch_rules();
 		if ( null === $rules ) {
 			// Transport or parse failure: serve empty, do not cache, retry next time.
 			return $this->empty_rules();
@@ -145,6 +138,34 @@ final class BackendClient {
 		set_transient( $cache_key, $rules, self::RULES_CACHE_TTL );
 
 		return $rules;
+	}
+
+	/**
+	 * Probe whether the backend is answering for this store right now.
+	 *
+	 * Unlike {@see self::get_rules()} — which returns the empty fallback for both
+	 * a transport failure and a genuinely rule-less store, and so can't tell them
+	 * apart — this performs an uncached fetch and reports whether the backend
+	 * actually answered with a valid ruleset (HTTP 200 + parseable shape).
+	 *
+	 * Note: the backend serves an empty ruleset for *any* well-formed store id —
+	 * including ones it has never seen — so a true result proves the service is
+	 * reachable and answering, not that the store is registered there.
+	 *
+	 * On success the fetched ruleset is stored in the transient cache, so a
+	 * connect/refresh flow needs no second fetch. The cache is never read.
+	 *
+	 * @return bool True when the rules endpoint answered with a valid ruleset.
+	 */
+	public function ping(): bool {
+		$rules = $this->fetch_rules();
+		if ( null === $rules ) {
+			return false;
+		}
+
+		set_transient( $this->rules_transient_key(), $rules, self::RULES_CACHE_TTL );
+
+		return true;
 	}
 
 	/**
@@ -242,6 +263,25 @@ final class BackendClient {
 				'body'     => wp_json_encode( $body ),
 			)
 		);
+	}
+
+	/**
+	 * Fetch and parse the ruleset from the backend, bypassing the cache.
+	 *
+	 * The single source of the rules request shape — both {@see self::get_rules()}
+	 * and {@see self::ping()} go through here.
+	 *
+	 * @return array<string,mixed>|null Null on any transport/status/parse error.
+	 */
+	private function fetch_rules(): ?array {
+		$response = wp_remote_get(
+			$this->rules_url(),
+			array(
+				'timeout' => self::RULES_TIMEOUT,
+			)
+		);
+
+		return $this->parse_rules_response( $response );
 	}
 
 	/**

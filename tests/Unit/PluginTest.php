@@ -11,6 +11,7 @@ namespace FV\WPEcwidRedirectHelper\Tests\Unit;
 
 use Brain\Monkey;
 use Brain\Monkey\Actions;
+use Brain\Monkey\Functions;
 use FV\WPEcwidRedirectHelper\Plugin;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
@@ -40,8 +41,21 @@ final class PluginTest extends TestCase {
 		$this->assertSame( '0.1.0', Plugin::VERSION );
 	}
 
-	public function test_register_adds_init_hook(): void {
-		Actions\expectAdded( 'init' )->once();
+	public function test_register_wires_admin_settings_in_admin(): void {
+		Functions\when( 'is_admin' )->justReturn( true );
+
+		Actions\expectAdded( 'admin_menu' )->once();
+		Actions\expectAdded( 'admin_post_fv_erh_connect' )->once();
+		Actions\expectAdded( 'admin_post_fv_erh_refresh' )->once();
+		Actions\expectAdded( 'admin_post_fv_erh_disconnect' )->once();
+
+		Plugin::instance()->register();
+	}
+
+	public function test_register_skips_admin_hooks_on_front_end(): void {
+		Functions\when( 'is_admin' )->justReturn( false );
+
+		Actions\expectAdded( 'admin_menu' )->never();
 
 		Plugin::instance()->register();
 	}

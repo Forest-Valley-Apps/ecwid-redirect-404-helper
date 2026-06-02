@@ -9,14 +9,16 @@ declare( strict_types=1 );
 
 namespace FV\WPEcwidRedirectHelper;
 
+use FV\WPEcwidRedirectHelper\Admin\SettingsPage;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Main plugin controller.
  *
- * Wires WordPress hooks. No database or network work happens here yet — this
- * is the Session 0 scaffold from the implementation plan. Feature wiring lands
- * in later sessions.
+ * Wires WordPress hooks. The connection settings screen (Session 3) is the first
+ * feature registered here; capture, dashboard and redirect features land in
+ * later sessions.
  */
 final class Plugin {
 
@@ -58,18 +60,9 @@ final class Plugin {
 	 * @return void
 	 */
 	public function register(): void {
-		add_action( 'init', array( $this, 'on_init' ) );
-	}
-
-	/**
-	 * Fired on the WordPress `init` hook.
-	 *
-	 * Placeholder for the scaffold.
-	 *
-	 * @return void
-	 */
-	public function on_init(): void {
-		// Intentionally empty for the Session 0 scaffold.
+		if ( is_admin() ) {
+			( new SettingsPage() )->register();
+		}
 	}
 
 	/**

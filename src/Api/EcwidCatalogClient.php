@@ -63,6 +63,27 @@ final class EcwidCatalogClient {
 	public const UNKNOWN = 'unknown';
 
 	/**
+	 * Credential check: the token authenticates against this store.
+	 *
+	 * @var string
+	 */
+	public const AUTH_OK = 'auth-ok';
+
+	/**
+	 * Credential check: the token was rejected (HTTP 401/403).
+	 *
+	 * @var string
+	 */
+	public const AUTH_FAILED = 'auth-failed';
+
+	/**
+	 * Credential check: indeterminate (transport error / unexpected status).
+	 *
+	 * @var string
+	 */
+	public const AUTH_UNKNOWN = 'auth-unknown';
+
+	/**
 	 * Timeout, in seconds, for a catalog lookup.
 	 *
 	 * @var int
@@ -124,6 +145,38 @@ final class EcwidCatalogClient {
 	}
 
 	/**
+	 * Verify that the configured public token authenticates against this store.
+	 *
+	 * Used by the connect flow as a lightweight "catalog ping". Lists a single
+	 * product (`responseFields=count` keeps the payload tiny) and inspects the
+	 * status: a `200` proves the token + store id are valid; a `401`/`403`
+	 * proves the token is rejected; anything else is indeterminate.
+	 *
+	 * @return string One of the AUTH_OK / AUTH_FAILED / AUTH_UNKNOWN constants.
+	 */
+	public function verify_credentials(): string {
+		if ( '' === $this->public_token ) {
+			return self::AUTH_FAILED;
+		}
+
+		$status = $this->request_status( $this->ping_url() );
+
+		if ( null === $status ) {
+			return self::AUTH_UNKNOWN;
+		}
+
+		if ( 200 === $status ) {
+			return self::AUTH_OK;
+		}
+
+		if ( 401 === $status || 403 === $status ) {
+			return self::AUTH_FAILED;
+		}
+
+		return self::AUTH_UNKNOWN;
+	}
+
+	/**
 	 * Look up a catalog entity by id and map the HTTP result to a status.
 	 *
 	 * @param string $collection Catalog collection ('products' or 'categories').
@@ -136,22 +189,11 @@ final class EcwidCatalogClient {
 			return self::UNKNOWN;
 		}
 
-		$response = wp_remote_get(
-			$this->entity_url( $collection, $id ),
-			array(
-				'timeout' => self::TIMEOUT,
-				'headers' => array(
-					// Ecwid discontinued query-param tokens (2025-03); Bearer only.
-					'Authorization' => 'Bearer ' . $this->public_token,
-				),
-			)
-		);
+		$status = $this->request_status( $this->entity_url( $collection, $id ) );
 
-		if ( is_wp_error( $response ) ) {
+		if ( null === $status ) {
 			return self::UNKNOWN;
 		}
-
-		$status = (int) wp_remote_retrieve_response_code( $response );
 
 		if ( 200 === $status ) {
 			return self::EXISTS;
@@ -162,6 +204,35 @@ final class EcwidCatalogClient {
 		}
 
 		return self::UNKNOWN;
+	}
+
+	/**
+	 * Issue an authenticated catalog GET and return the HTTP status code.
+	 *
+	 * The single source of the catalog request shape (timeout + auth header) —
+	 * every catalog call goes through here. Callers map the status to their own
+	 * tri-state constants.
+	 *
+	 * @param string $url Full request URL.
+	 * @return int|null The HTTP status code, or null on a transport error.
+	 */
+	private function request_status( string $url ): ?int {
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout' => self::TIMEOUT,
+				'headers' => array(
+					// Ecwid discontinued query-param tokens (2025-03); Bearer only.
+					'Authorization' => 'Bearer ' . $this->public_token,
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return null;
+		}
+
+		return (int) wp_remote_retrieve_response_code( $response );
 	}
 
 	/**
@@ -182,6 +253,22 @@ final class EcwidCatalogClient {
 			$this->store_id,
 			$collection,
 			$id
+		);
+	}
+
+	/**
+	 * URL for the lightweight credential-check request.
+	 *
+	 * Lists products capped at one row and asks only for the result `count`, so
+	 * the response stays minimal regardless of catalog size.
+	 *
+	 * @return string
+	 */
+	private function ping_url(): string {
+		return sprintf(
+			'%s/%d/products?limit=1&responseFields=count',
+			$this->base_url,
+			$this->store_id
 		);
 	}
 }

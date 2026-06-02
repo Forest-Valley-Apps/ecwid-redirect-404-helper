@@ -117,4 +117,64 @@ final class EcwidCatalogClientTest extends TestCase {
 
 		$this->assertSame( EcwidCatalogClient::UNKNOWN, $client->product_exists( 42 ) );
 	}
+
+	public function test_verify_credentials_ok_on_200(): void {
+		Functions\when( 'wp_remote_get' )->justReturn( array( 'code' => 200 ) );
+
+		$this->assertSame( EcwidCatalogClient::AUTH_OK, $this->client()->verify_credentials() );
+	}
+
+	public function test_verify_credentials_failed_on_401(): void {
+		Functions\when( 'wp_remote_get' )->justReturn( array( 'code' => 401 ) );
+
+		$this->assertSame( EcwidCatalogClient::AUTH_FAILED, $this->client()->verify_credentials() );
+	}
+
+	public function test_verify_credentials_failed_on_403(): void {
+		Functions\when( 'wp_remote_get' )->justReturn( array( 'code' => 403 ) );
+
+		$this->assertSame( EcwidCatalogClient::AUTH_FAILED, $this->client()->verify_credentials() );
+	}
+
+	public function test_verify_credentials_unknown_on_500(): void {
+		Functions\when( 'wp_remote_get' )->justReturn( array( 'code' => 500 ) );
+
+		$this->assertSame( EcwidCatalogClient::AUTH_UNKNOWN, $this->client()->verify_credentials() );
+	}
+
+	public function test_verify_credentials_unknown_on_wp_error(): void {
+		Functions\when( 'is_wp_error' )->justReturn( true );
+		Functions\when( 'wp_remote_get' )->justReturn( 'boom' );
+
+		$this->assertSame( EcwidCatalogClient::AUTH_UNKNOWN, $this->client()->verify_credentials() );
+	}
+
+	public function test_verify_credentials_failed_on_empty_token_without_http(): void {
+		Functions\expect( 'wp_remote_get' )->never();
+
+		$client = new EcwidCatalogClient( self::STORE_ID, '' );
+
+		$this->assertSame( EcwidCatalogClient::AUTH_FAILED, $client->verify_credentials() );
+	}
+
+	public function test_verify_credentials_targets_products_list_with_bearer(): void {
+		$captured = array();
+		Functions\expect( 'wp_remote_get' )
+			->once()
+			->andReturnUsing(
+				static function ( $url, $args ) use ( &$captured ) {
+					$captured['url']  = $url;
+					$captured['args'] = $args;
+					return array( 'code' => 200 );
+				}
+			);
+
+		$this->client()->verify_credentials();
+
+		$expected = 'https://app.ecwid.com/api/v3/' . self::STORE_ID
+			. '/products?limit=1&responseFields=count';
+		$this->assertSame( $expected, $captured['url'] );
+		$this->assertStringNotContainsString( 'token=', $captured['url'] );
+		$this->assertSame( 'Bearer ' . self::TOKEN, $captured['args']['headers']['Authorization'] );
+	}
 }
