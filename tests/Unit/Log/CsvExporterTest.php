@@ -82,6 +82,28 @@ final class CsvExporterTest extends TestCase {
 		$this->assertSame( '7', $parsed[0]['hit_count'] );
 	}
 
+	public function test_formula_injection_is_neutralized(): void {
+		$parsed = $this->round_trip(
+			array(
+				array(
+					'url_path' => '=HYPERLINK("http://evil.example")',
+					'referrer' => '@SUM(1+1)',
+				),
+				array(
+					'url_path' => '+1234567890',
+					'referrer' => '-2+3',
+				),
+			)
+		);
+
+		// Leading formula triggers are prefixed with a single quote so the
+		// spreadsheet reads them as text; ordinary values are left alone.
+		$this->assertSame( "'=HYPERLINK(\"http://evil.example\")", $parsed[0]['url_path'] );
+		$this->assertSame( "'@SUM(1+1)", $parsed[0]['referrer'] );
+		$this->assertSame( "'+1234567890", $parsed[1]['url_path'] );
+		$this->assertSame( "'-2+3", $parsed[1]['referrer'] );
+	}
+
 	public function test_missing_keys_become_empty_fields_and_order_is_stable(): void {
 		$parsed = $this->round_trip(
 			array(

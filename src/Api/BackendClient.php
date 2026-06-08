@@ -14,12 +14,13 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Thin client over the hosted Redirect & 404 Manager backend.
  *
- * Talks to the four **public** read/report endpoints only — never the
+ * Talks to the five **public** read/report endpoints only — never the
  * privileged admin write API (those endpoints sit behind Ecwid-iframe auth):
- *  - `GET  /api/storefront/rules/:storeId`   — the resolved redirect ruleset.
- *  - `GET  /api/storefront/deleted/:storeId` — webhook-sourced deleted entity ids.
- *  - `POST /api/storefront/404`              — report a captured 404.
- *  - `POST /api/storefront/hit`              — report a redirect hit.
+ *  - `GET  /api/storefront/rules/:storeId`      — the resolved redirect ruleset.
+ *  - `GET  /api/storefront/deleted/:storeId`    — webhook-sourced deleted entity ids.
+ *  - `GET  /api/storefront/app-status/:storeId` — is the paid app installed (deep-link vs. listing).
+ *  - `POST /api/storefront/404`                 — report a captured 404.
+ *  - `POST /api/storefront/hit`                 — report a redirect hit.
  *
  * The rules endpoint always serves the **full** ruleset inline
  * (`{ v, exact, wildcard, storeUrl?, baseUrl? }`); the backend resolves the

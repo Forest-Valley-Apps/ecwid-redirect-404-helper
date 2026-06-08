@@ -3,7 +3,7 @@
  * Plugin Name:       Redirect & 404 Helper for Ecwid
  * Plugin URI:        https://apps.fv.dev/redirect-404-manager/
  * Description:       Ecwid-aware 404 logging and redirects for WordPress — the only 404/redirect tool that understands Ecwid's embedded store URLs.
- * Version:           0.1.0
+ * Version:           1.0.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Forest Valley
@@ -22,7 +22,7 @@ namespace FV\WPEcwidRedirectHelper;
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'FV_ERH_VERSION', '0.1.0' );
+define( 'FV_ERH_VERSION', '1.0.0' );
 define( 'FV_ERH_PLUGIN_FILE', __FILE__ );
 define( 'FV_ERH_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 

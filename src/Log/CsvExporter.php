@@ -53,10 +53,29 @@ final class CsvExporter {
 			$line = array();
 
 			foreach ( self::COLUMNS as $key ) {
-				$line[] = (string) ( $row[ $key ] ?? '' );
+				$line[] = self::neutralize( (string) ( $row[ $key ] ?? '' ) );
 			}
 
 			fputcsv( $stream, $line );
 		}
+	}
+
+	/**
+	 * Defuse spreadsheet formula injection.
+	 *
+	 * Logged URLs and referrers are visitor-controlled, so a cell may begin with
+	 * a character Excel/Sheets treats as the start of a formula. Prefixing such a
+	 * value with a single quote forces the spreadsheet to read it as literal text
+	 * without altering the underlying string for any other consumer.
+	 *
+	 * @param string $value Raw cell value.
+	 * @return string Safe cell value.
+	 */
+	private static function neutralize( string $value ): string {
+		if ( '' !== $value && false !== strpos( "=+-@\t\r", $value[0] ) ) {
+			return "'" . $value;
+		}
+
+		return $value;
 	}
 }

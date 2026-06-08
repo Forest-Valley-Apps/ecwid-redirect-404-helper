@@ -2,9 +2,9 @@
 Contributors: alexfv
 Tags: ecwid, 404, redirect, broken links, seo
 Requires at least: 6.0
-Tested up to: 6.5
+Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,32 +12,149 @@ The only WordPress 404/redirect tool that understands Ecwid's embedded store URL
 
 == Description ==
 
-Redirect & 404 Helper for Ecwid is a companion plugin for stores running the
-official Ecwid Shopping Cart plugin on WordPress. Because Ecwid products are
-JavaScript-rendered views on a single host page, generic redirect plugins cannot
-classify or redirect them. This plugin is Ecwid-aware.
+Redirect & 404 Helper for Ecwid finds, explains, and helps you fix 404 errors on
+WordPress sites running an embedded Ecwid store.
 
-This is an early scaffold. Features arrive per the implementation plan:
+When your site embeds an Ecwid store, broken URLs come in two flavors that look
+identical to a visitor but need completely different fixes:
 
-* Ecwid-aware 404 logging and classification (product / category / WordPress page)
-* "Deleted vs. typo" detection against the live Ecwid catalog
-* False-404 collision warner for WordPress slugs that collide with Ecwid's `-(p|c)123` URL pattern
-* Manual 301 redirects and CSV export of the 404 log
+* **WordPress 404s** — an old blog post, a renamed page, a mistyped link.
+* **Ecwid store 404s** — a product or category URL inside the embedded store
+  (`/store/some-product-p123456789`) that no longer resolves, because the item was
+  deleted, renamed, or the link was wrong from the start.
+
+Ecwid store pages are rendered by JavaScript inside a single WordPress page, so a
+generic redirect plugin (Redirection, Yoast, Rank Math) only ever sees the first
+kind — it cannot tell a dead product from a typo, or redirect store sub-routes at
+all. This plugin is Ecwid-aware.
+
+= What it does (free) =
+
+* **Ecwid-aware 404 logging.** Every 404 is captured server-side and classified —
+  WordPress page, Ecwid product, Ecwid category, or store sub-route — with hit
+  counts, last referrer, and last-seen time.
+* **"Deleted vs. typo" catalog verdicts.** For Ecwid product/category 404s, the
+  plugin checks the live Ecwid catalog and tells you whether the item is live
+  (a broken link), was deleted, or never existed.
+* **False-404 collision warner.** Warns when a WordPress page slug collides with
+  your store's URL space, which produces confusing "false 404s".
+* **Manual 301 redirects.** Create real WordPress-layer 301s, served before
+  WordPress takes its own "did you mean" guess.
+* **CSV export.** Download the 404 log for offline analysis or to prepare a bulk
+  mapping.
+
+= WordPress layer vs. storefront layer =
+
+Your site has two URL layers, and each can only be fixed at its own layer. This
+plugin handles the **WordPress layer**: pages, posts, the store page itself, and
+manual 301s. Routes rendered *inside* the embedded store by Ecwid's JavaScript
+(products, categories, cart) are the **storefront layer** — no WordPress plugin
+can redirect those, because WordPress already answered the request with HTTP 200
+before Ecwid's script runs. This plugin **detects and classifies** those
+storefront 404s and is honest about which layer fixes each one.
+
+= Free vs. paid =
+
+The line is **effort, not capability.** The free plugin is genuinely complete for
+hand-fixing a small store. When a job is better done automatically or in bulk —
+migration imports, bulk URL mapping, automatic deleted-product redirects, and the
+storefront-layer redirects a WordPress plugin fundamentally cannot perform — the
+plugin points you to its paid companion, the **Redirect & 404 Manager** app, which
+runs inside your Ecwid admin. The prompts are dismissible and stay dismissed; the
+plugin never changes your store.
 
 == Installation ==
 
-1. Upload the plugin to `/wp-content/plugins/ecwid-redirect-404-helper`, or install it from the Plugins screen.
-2. Activate it through the **Plugins** screen in WordPress.
-3. Ensure the official Ecwid Shopping Cart plugin is installed and configured.
+1. In wp-admin, go to **Plugins → Add New** and search for "Redirect & 404 Helper
+   for Ecwid", or upload the plugin zip via **Upload Plugin**.
+2. Click **Install Now**, then **Activate**.
+3. Make sure the official **Ecwid Shopping Cart** plugin is installed and connected
+   to your store. The helper discovers your Store ID and public token from it
+   automatically — no passwords or API keys are entered into this plugin.
+
+From the moment it is active, every real 404 on the site is captured and
+classified in the background. Open the **404 Log** to see what visitors are
+hitting.
 
 == Frequently Asked Questions ==
 
 = Does this work without the Ecwid plugin? =
 
-The Ecwid-aware features require the official Ecwid Shopping Cart plugin. Generic
-404 logging works regardless.
+Plain WordPress 404 logging and manual 301 redirects work regardless. The
+Ecwid-aware features (catalog verdicts, collision warnings) require the official
+Ecwid Shopping Cart plugin, which the helper reads its store connection from.
+
+= Do I have to enter any API keys or passwords? =
+
+No. The plugin discovers your Store ID and public storefront token from the
+official Ecwid plugin's own settings. Nothing is entered into this plugin.
+
+= Why don't store product 404s show up in the log? =
+
+Ecwid product/category views are rendered by JavaScript after WordPress has
+already answered the request with HTTP 200, so they never reach WordPress's 404
+handling as a redirectable request. The plugin captures what arrives at the
+WordPress layer and classifies recognizable store URLs, but the storefront layer
+is where in-store routes are actually fixed.
+
+= What does the "Deleted" verdict mean, and why do some deleted products show "Never existed"? =
+
+"Deleted" means a deletion is on record for that item. Deletion history begins
+when the paid Redirect & 404 Manager app is installed on your store, so items
+deleted before that — or in stores without the app — honestly show as "Never
+existed" rather than guessing.
+
+= A redirect I created isn't firing. =
+
+Confirm it is enabled, check that the source path matches exactly what the browser
+requests (compare with the path in the 404 Log), and purge any page cache that may
+be serving a stale 404. If the destination itself redirects again, point the
+source directly at the final URL.
+
+= Does the plugin track me or send data anywhere? =
+
+WordPress-page 404s are recorded only in your own site's database and are never
+sent anywhere. Only **Ecwid store** 404s are reported to the companion backend —
+and only after you click **Connect**, which is the explicit opt-in (Disconnect
+stops it). Those reports contain just the broken store path and its referrer,
+scoped by your public store ID. The plugin uses only public read/report endpoints
+and never writes to your store.
+
+== Privacy and external services ==
+
+This plugin connects to one external service: the hosted Redirect & 404 Manager backend
+(https://redirect-manager-prod.up.railway.app), the companion to the paid Ecwid app.
+
+* **When** — only after you click **Connect** on the plugin's settings page. Connecting is the
+  explicit opt-in; **Disconnect** stops all reporting.
+* **What** — while connected, the plugin reports Ecwid store 404s (the broken store path and its
+  referrer), scoped by your public Ecwid store ID, and requests catalog verdicts for those URLs.
+  WordPress-page 404s are stored only in your own site's database and are never transmitted.
+* **Why** — to classify whether an Ecwid 404 points to a deleted product, a live item, or a typo.
+
+The plugin uses only public read/report endpoints, never the write API, and never changes your
+store. No analytics or visitor tracking is performed, and nothing beyond the requested URL and
+its referrer is sent.
+
+== Screenshots ==
+
+1. The 404 Log — every broken URL, classified by type with a live catalog verdict.
+2. Catalog verdicts distinguish deleted products from typos and broken links.
+3. The Redirects screen — manual WordPress-layer 301s with hit counts.
 
 == Changelog ==
 
-= 0.1.0 =
-* Initial plugin scaffold (tooling and bootstrap only; no user-facing features yet).
+= 1.0.0 =
+* Initial public release.
+* Ecwid-aware 404 logging and classification (WordPress page / Ecwid product /
+  Ecwid category / store sub-route).
+* "Deleted vs. typo" catalog verdicts against the live Ecwid catalog.
+* False-404 slug-collision warner.
+* Manual WordPress-layer 301 redirects with hit tracking.
+* CSV export of the 404 log.
+* Automatic store connection via the official Ecwid Shopping Cart plugin.
+
+== Upgrade Notice ==
+
+= 1.0.0 =
+First public release of Redirect & 404 Helper for Ecwid.

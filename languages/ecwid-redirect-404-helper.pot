@@ -1,0 +1,590 @@
+# Copyright (C) 2026 Forest Valley
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Redirect & 404 Helper for Ecwid 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ecwid-redirect-404-helper\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-06-08T15:46:52+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: ecwid-redirect-404-helper\n"
+
+#. Plugin Name of the plugin
+#: ecwid-redirect-404-helper.php
+#: src/Admin/Menu.php:106
+#: src/Admin/Menu.php:134
+#: src/Admin/SettingsPage.php:108
+msgid "Redirect & 404 Helper for Ecwid"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: ecwid-redirect-404-helper.php
+msgid "https://apps.fv.dev/redirect-404-manager/"
+msgstr ""
+
+#. Description of the plugin
+#: ecwid-redirect-404-helper.php
+msgid "Ecwid-aware 404 logging and redirects for WordPress — the only 404/redirect tool that understands Ecwid's embedded store URLs."
+msgstr ""
+
+#. Author of the plugin
+#: ecwid-redirect-404-helper.php
+msgid "Forest Valley"
+msgstr ""
+
+#. Author URI of the plugin
+#: ecwid-redirect-404-helper.php
+msgid "https://apps.fv.dev/"
+msgstr ""
+
+#: src/Admin/LogListTable.php:78
+msgid "URL"
+msgstr ""
+
+#: src/Admin/LogListTable.php:79
+#: src/Admin/LogPage.php:404
+msgid "Type"
+msgstr ""
+
+#: src/Admin/LogListTable.php:80
+msgid "Catalog"
+msgstr ""
+
+#: src/Admin/LogListTable.php:81
+#: src/Admin/RedirectListTable.php:67
+msgid "Hits"
+msgstr ""
+
+#: src/Admin/LogListTable.php:82
+msgid "Last referrer"
+msgstr ""
+
+#: src/Admin/LogListTable.php:83
+#: src/Admin/RedirectListTable.php:66
+msgid "Status"
+msgstr ""
+
+#: src/Admin/LogListTable.php:84
+msgid "Last seen"
+msgstr ""
+
+#: src/Admin/LogListTable.php:109
+#: src/Admin/LogListTable.php:252
+#: src/Admin/RedirectListTable.php:79
+#: src/Admin/RedirectListTable.php:160
+msgid "Delete"
+msgstr ""
+
+#: src/Admin/LogListTable.php:154
+msgid "All types"
+msgstr ""
+
+#: src/Admin/LogListTable.php:166
+msgid "All catalog verdicts"
+msgstr ""
+
+#: src/Admin/LogListTable.php:178
+msgid "All statuses"
+msgstr ""
+
+#: src/Admin/LogListTable.php:189
+msgid "Filter"
+msgstr ""
+
+#: src/Admin/LogListTable.php:200
+msgid "No 404s logged yet. They will appear here as visitors hit missing URLs."
+msgstr ""
+
+#: src/Admin/LogListTable.php:247
+msgid "Create redirect"
+msgstr ""
+
+#: src/Admin/LogListTable.php:347
+msgid "Ecwid product"
+msgstr ""
+
+#: src/Admin/LogListTable.php:348
+msgid "Ecwid category"
+msgstr ""
+
+#: src/Admin/LogListTable.php:349
+msgid "WP page"
+msgstr ""
+
+#: src/Admin/LogListTable.php:360
+msgid "New"
+msgstr ""
+
+#: src/Admin/LogListTable.php:361
+msgid "Redirected"
+msgstr ""
+
+#: src/Admin/LogListTable.php:372
+msgid "In catalog — broken link"
+msgstr ""
+
+#: src/Admin/LogListTable.php:373
+msgid "Deleted"
+msgstr ""
+
+#: src/Admin/LogListTable.php:374
+msgid "Never existed"
+msgstr ""
+
+#: src/Admin/LogListTable.php:375
+msgid "Not in catalog"
+msgstr ""
+
+#: src/Admin/LogListTable.php:386
+msgid "This product/category is live in your Ecwid catalog — the URL or link pointing here is what is broken."
+msgstr ""
+
+#: src/Admin/LogListTable.php:387
+msgid "This item was deleted from your Ecwid catalog (deletion on record in Redirect & 404 Manager)."
+msgstr ""
+
+#: src/Admin/LogListTable.php:388
+msgid "No item with this id is on record — most likely a mistyped or fabricated link. (Items deleted before Redirect & 404 Manager was installed also show here.)"
+msgstr ""
+
+#: src/Admin/LogListTable.php:389
+msgid "Not in your Ecwid catalog. Install the Redirect & 404 Manager app to tell deleted items apart from mistyped links."
+msgstr ""
+
+#: src/Admin/LogPage.php:123
+#: src/Admin/LogPage.php:208
+#: src/Admin/RedirectsPage.php:203
+#: src/Admin/RedirectsPage.php:283
+#: src/Admin/SettingsPage.php:227
+#: src/Collision/CollisionNotice.php:138
+#: src/Upsell/UpgradeCta.php:113
+msgid "You do not have permission to do this."
+msgstr ""
+
+#: src/Admin/LogPage.php:236
+#: src/Admin/RedirectsPage.php:225
+#: src/Admin/SettingsPage.php:101
+#: src/Admin/UpgradePage.php:87
+msgid "You do not have permission to access this page."
+msgstr ""
+
+#: src/Admin/LogPage.php:250
+#: src/Admin/Menu.php:116
+#: src/Admin/Menu.php:117
+msgid "404 Log"
+msgstr ""
+
+#: src/Admin/LogPage.php:251
+msgid "Export CSV"
+msgstr ""
+
+#: src/Admin/LogPage.php:261
+msgid "Search URLs"
+msgstr ""
+
+#. translators: %d: number of Ecwid entities awaiting a catalog check.
+#: src/Admin/LogPage.php:367
+#, php-format
+msgid "Check catalog (%d)"
+msgstr ""
+
+#: src/Admin/LogPage.php:368
+msgid "Check catalog"
+msgstr ""
+
+#: src/Admin/LogPage.php:389
+msgid "Slug check: no page slugs collide with Ecwid URL patterns."
+msgstr ""
+
+#: src/Admin/LogPage.php:390
+msgid "Rescan"
+msgstr ""
+
+#: src/Admin/LogPage.php:396
+msgid "False-404 warning: slug collisions with Ecwid"
+msgstr ""
+
+#: src/Admin/LogPage.php:398
+msgid "These published pages have slugs ending in Ecwid's product/category URL pattern (-p123 / -c123). The Ecwid store widget hijacks such URLs and renders a \"not found\" store page instead of your content — visitors see a 404 even though the page exists. Rename the slug (e.g. add a word after the number) to fix it."
+msgstr ""
+
+#: src/Admin/LogPage.php:402
+msgid "Page"
+msgstr ""
+
+#: src/Admin/LogPage.php:403
+msgid "Slug"
+msgstr ""
+
+#: src/Admin/LogPage.php:405
+msgid "Actions"
+msgstr ""
+
+#: src/Admin/LogPage.php:418
+msgid "Edit slug"
+msgstr ""
+
+#: src/Admin/LogPage.php:421
+msgid "View"
+msgstr ""
+
+#: src/Admin/LogPage.php:428
+msgid "Rescan now"
+msgstr ""
+
+#: src/Admin/LogPage.php:447
+msgid "Deleted products are still 404ing"
+msgstr ""
+
+#: src/Admin/LogPage.php:448
+msgid "Some of these 404s are products or categories you deleted. The Redirect & 404 Manager app redirects a deleted item automatically — to its parent category or your homepage — the moment it is removed, so you never hand-fix them."
+msgstr ""
+
+#: src/Admin/LogPage.php:451
+msgid "Automate deleted redirects"
+msgstr ""
+
+#: src/Admin/LogPage.php:468
+msgid "Some 404s happen inside the Ecwid storefront"
+msgstr ""
+
+#: src/Admin/LogPage.php:469
+msgid "These product and category 404s occur inside the embedded store, in the visitor's browser — they never reach WordPress, so a WordPress-layer redirect cannot catch them. The Redirect & 404 Manager app redirects at the storefront layer, which is the only place these can be fixed."
+msgstr ""
+
+#: src/Admin/LogPage.php:472
+msgid "Fix storefront 404s in the app"
+msgstr ""
+
+#: src/Admin/LogPage.php:493
+msgid "Selected 404 entries deleted."
+msgstr ""
+
+#. translators: 1: entities checked this run, 2: entities still pending.
+#: src/Admin/LogPage.php:504
+#, php-format
+msgid "Catalog check complete: %1$d entities checked, %2$d still pending."
+msgstr ""
+
+#: src/Admin/LogPage.php:512
+msgid "Catalog check unavailable: connect your Ecwid store first (Settings)."
+msgstr ""
+
+#: src/Admin/LogPage.php:516
+msgid "Slug collision scan refreshed."
+msgstr ""
+
+#: src/Admin/Menu.php:107
+msgid "Redirect & 404"
+msgstr ""
+
+#: src/Admin/Menu.php:125
+#: src/Admin/Menu.php:126
+#: src/Admin/RedirectsPage.php:229
+msgid "Redirects"
+msgstr ""
+
+#: src/Admin/Menu.php:135
+msgid "Settings"
+msgstr ""
+
+#: src/Admin/Menu.php:143
+#: src/Admin/UpgradePage.php:93
+msgid "Upgrade — Powered by Redirect & 404 Manager"
+msgstr ""
+
+#: src/Admin/Menu.php:144
+msgid "Upgrade"
+msgstr ""
+
+#: src/Admin/RedirectListTable.php:64
+msgid "Source"
+msgstr ""
+
+#: src/Admin/RedirectListTable.php:65
+#: src/Admin/RedirectsPage.php:350
+msgid "Destination"
+msgstr ""
+
+#: src/Admin/RedirectListTable.php:68
+msgid "Last used"
+msgstr ""
+
+#: src/Admin/RedirectListTable.php:109
+msgid "No redirects yet. Add one above, or create one from a logged 404."
+msgstr ""
+
+#: src/Admin/RedirectListTable.php:154
+msgid "Disable"
+msgstr ""
+
+#: src/Admin/RedirectListTable.php:155
+msgid "Enable"
+msgstr ""
+
+#: src/Admin/RedirectListTable.php:185
+msgid "Active"
+msgstr ""
+
+#: src/Admin/RedirectListTable.php:186
+msgid "Disabled"
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:260
+msgid "Migrating a store, or fixing many URLs at once?"
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:261
+msgid "These redirects are added one at a time, by hand. The Redirect & 404 Manager app maps old URLs to new ones in bulk and imports a migration map from Shopify, WooCommerce, or BigCommerce — the same work, without the per-URL effort."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:264
+msgid "Bulk-map URLs in the app"
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:268
+msgid "Import a migration"
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:320
+msgid "These are WordPress-layer redirects: the server answers with an HTTP 301 for any URL on this site that would otherwise be a 404. They cannot redirect between pages inside the embedded Ecwid storefront — those navigations happen in the visitor's browser and never reach WordPress. Storefront-layer redirects are what the Redirect & 404 Manager app inside Ecwid provides."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:338
+#: src/Admin/RedirectsPage.php:357
+msgid "Add redirect"
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:345
+msgid "Source path"
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:347
+msgid "Wildcards: /old-blog/* forwards the matched part to a /new-blog/* destination; *-p123 matches any path ending in -p123."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:352
+msgid "A path on this site (/new-page) or a full URL (https://example.com/new-page)."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:396
+msgid "Redirect created. It will serve on the next request for the source URL."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:398
+msgid "The source must be a path on this site, like /old-page or /old-section/*."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:400
+msgid "The destination must be a path (/new-page) or a full http(s) URL, and must differ from the source."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:402
+msgid "A redirect for this source already exists."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:404
+msgid "Redirect deleted."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:406
+msgid "Redirect enabled."
+msgstr ""
+
+#: src/Admin/RedirectsPage.php:408
+msgid "Redirect disabled."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:114
+msgid "Ecwid plugin"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:116
+msgid "Detected"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:117
+msgid "Not detected"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:120
+msgid "Store ID"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:123
+msgid "—"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:126
+msgid "Storefront token"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:128
+msgid "Available"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:129
+msgid "Not available"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:132
+msgid "Connection"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:134
+msgid "Connected"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:135
+msgid "Not connected"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:141
+msgid "Last verified"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:301
+msgid "Install and activate the official Ecwid Shopping Cart plugin, then configure your store to connect."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:304
+msgid "The Ecwid plugin is active but no store is configured yet. Connect your Ecwid store in its settings first."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:307
+msgid "A store ID was found but no storefront token is available yet. Reconnect your store in the Ecwid plugin to issue one."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:311
+msgid "Your Ecwid store is connected. Use Refresh to re-verify and reload redirect rules."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:312
+msgid "Your Ecwid store was detected. Click Connect to verify and start using it."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:330
+msgid "Connect"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:334
+msgid "Refresh"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:335
+msgid "Disconnect"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:392
+msgid "Connected to your Ecwid store."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:394
+msgid "Connection re-verified and redirect rules refreshed."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:396
+msgid "Disconnected from your Ecwid store."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:398
+msgid "Your Ecwid store is not fully configured yet."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:400
+msgid "The redirect service could not be reached. Try again shortly."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:402
+msgid "The Ecwid storefront token was rejected. Reconnect your store in the Ecwid plugin."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:404
+msgid "The Ecwid catalog could not be reached to confirm the connection. Try again shortly."
+msgstr ""
+
+#: src/Admin/UpgradePage.php:96
+msgid "This free plugin finds, classifies, and lets you hand-fix 404s at the WordPress layer. The Redirect & 404 Manager app — which runs inside your Ecwid admin — automates that work in bulk and reaches the Ecwid storefront layer a WordPress plugin cannot. Each button below opens the app on the matching screen; nothing is changed on your store until you act there."
+msgstr ""
+
+#: src/Admin/UpgradePage.php:104
+msgid "Connect your Ecwid store (Settings) to deep-link straight into these screens. Until then the buttons open the app listing."
+msgstr ""
+
+#: src/Admin/UpgradePage.php:126
+msgid "Bulk old→new URL mapping"
+msgstr ""
+
+#: src/Admin/UpgradePage.php:127
+msgid "Map many old URLs to their new destinations at once, instead of adding redirects one at a time — the migration workhorse generic tools cannot do for Ecwid."
+msgstr ""
+
+#: src/Admin/UpgradePage.php:128
+msgid "Open bulk mapping"
+msgstr ""
+
+#: src/Admin/UpgradePage.php:132
+msgid "Migration redirect import"
+msgstr ""
+
+#: src/Admin/UpgradePage.php:133
+msgid "Import a redirect map from a Shopify, WooCommerce, or BigCommerce migration so old store URLs keep working after the move to Ecwid."
+msgstr ""
+
+#: src/Admin/UpgradePage.php:134
+msgid "Open migration import"
+msgstr ""
+
+#: src/Admin/UpgradePage.php:138
+msgid "Automatic deleted-product redirects"
+msgstr ""
+
+#: src/Admin/UpgradePage.php:139
+msgid "When a product or category is deleted, the app redirects its URL automatically (to the parent category or your homepage) — no manual rule per deletion."
+msgstr ""
+
+#: src/Admin/UpgradePage.php:140
+msgid "Open auto-redirects"
+msgstr ""
+
+#: src/Admin/UpgradePage.php:144
+msgid "Storefront-layer redirects"
+msgstr ""
+
+#: src/Admin/UpgradePage.php:145
+msgid "Catch 404s inside the embedded Ecwid storefront — the product/category sub-routes that happen in the browser and never reach WordPress, so WordPress-layer redirects cannot touch them."
+msgstr ""
+
+#: src/Admin/UpgradePage.php:146
+msgid "Open storefront redirects"
+msgstr ""
+
+#: src/Collision/CollisionNotice.php:107
+msgid "Redirect & 404 Helper for Ecwid:"
+msgstr ""
+
+#. translators: 1: number of pages, 2: example slugs.
+#: src/Collision/CollisionNotice.php:113
+#, php-format
+msgid "%1$d published page has a slug ending in an Ecwid product/category pattern (%2$s). The Ecwid store widget hijacks such URLs and shows a \"not found\" store page instead of your content."
+msgid_plural "%1$d published pages have slugs ending in an Ecwid product/category pattern (%2$s). The Ecwid store widget hijacks such URLs and shows a \"not found\" store page instead of your content."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Collision/CollisionNotice.php:125
+msgid "Review the affected pages"
+msgstr ""
+
+#: src/Collision/CollisionNotice.php:127
+#: src/Upsell/UpgradeCta.php:179
+msgid "Dismiss"
+msgstr ""
+
+#: src/Upsell/UpgradeCta.php:152
+msgid "Paid feature"
+msgstr ""
