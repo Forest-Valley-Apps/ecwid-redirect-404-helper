@@ -9,7 +9,9 @@ declare( strict_types=1 );
 
 namespace FV\WPEcwidRedirectHelper\Cron;
 
+use FV\WPEcwidRedirectHelper\Api\BackendClient;
 use FV\WPEcwidRedirectHelper\Collision\CollisionScanner;
+use FV\WPEcwidRedirectHelper\Connection\EcwidPluginDiscovery;
 use FV\WPEcwidRedirectHelper\Verdict\VerdictChecker;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,6 +26,9 @@ defined( 'ABSPATH' ) || exit;
  *  2. Refreshes the slug-collision cache when it is missing, so the site-wide
  *     warning notice (which never scans on its own) can appear within the hour
  *     of a collision being introduced.
+ *  3. Warms the app-installed flag so the paid-tier CTAs can pick their
+ *     destination (deep-link vs. App Market listing) from cache during a render,
+ *     never blocking a page load on that fetch.
  *
  * Scheduled on activation; {@see self::ensure_scheduled()} re-schedules from
  * admin requests because plugin *updates* do not fire the activation hook
@@ -92,6 +97,14 @@ final class Tasks {
 		$scanner = new CollisionScanner();
 		if ( null === $scanner->cached_collisions() ) {
 			$scanner->get_collisions();
+		}
+
+		// Warm the app-installed flag for the paid-tier CTAs. A missing route
+		// (before prod promotion) returns null and is not cached, so this is a
+		// harmless no-op until the endpoint is live.
+		$discovery = EcwidPluginDiscovery::discover();
+		if ( $discovery->has_store_id() ) {
+			BackendClient::for_store( $discovery->store_id() )->get_app_installed();
 		}
 	}
 }

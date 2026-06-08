@@ -57,20 +57,30 @@ final class Menu {
 	private SettingsPage $settings_page;
 
 	/**
+	 * The upgrade page.
+	 *
+	 * @var UpgradePage
+	 */
+	private UpgradePage $upgrade_page;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param LogPage|null       $log_page       404 log page (injectable for tests).
 	 * @param RedirectsPage|null $redirects_page Redirects page (injectable for tests).
 	 * @param SettingsPage|null  $settings_page  Settings page (injectable for tests).
+	 * @param UpgradePage|null   $upgrade_page   Upgrade page (injectable for tests).
 	 */
 	public function __construct(
 		?LogPage $log_page = null,
 		?RedirectsPage $redirects_page = null,
-		?SettingsPage $settings_page = null
+		?SettingsPage $settings_page = null,
+		?UpgradePage $upgrade_page = null
 	) {
 		$this->log_page       = $log_page ?? new LogPage();
 		$this->redirects_page = $redirects_page ?? new RedirectsPage();
 		$this->settings_page  = $settings_page ?? new SettingsPage();
+		$this->upgrade_page   = $upgrade_page ?? new UpgradePage();
 	}
 
 	/**
@@ -126,6 +136,15 @@ final class Menu {
 			self::CAPABILITY,
 			SettingsPage::PAGE_SLUG,
 			array( $this->settings_page, 'render_page' )
+		);
+
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Upgrade — Powered by Redirect & 404 Manager', 'ecwid-redirect-404-helper' ),
+			__( 'Upgrade', 'ecwid-redirect-404-helper' ),
+			self::CAPABILITY,
+			UpgradePage::PAGE_SLUG,
+			array( $this->upgrade_page, 'render' )
 		);
 
 		// Pre-output action processing (deletes use post/redirect/get, which

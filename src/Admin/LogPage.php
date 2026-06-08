@@ -12,6 +12,9 @@ namespace FV\WPEcwidRedirectHelper\Admin;
 use FV\WPEcwidRedirectHelper\Collision\CollisionScanner;
 use FV\WPEcwidRedirectHelper\Log\CsvExporter;
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
+use FV\WPEcwidRedirectHelper\Upsell\DeepLink;
+use FV\WPEcwidRedirectHelper\Upsell\UpgradeCta;
+use FV\WPEcwidRedirectHelper\Url\UrlClassifier;
 use FV\WPEcwidRedirectHelper\Verdict\VerdictChecker;
 
 defined( 'ABSPATH' ) || exit;
@@ -68,14 +71,23 @@ final class LogPage {
 	private CollisionScanner $collisions;
 
 	/**
+	 * Paid-tier CTA renderer.
+	 *
+	 * @var UpgradeCta
+	 */
+	private UpgradeCta $cta;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param NotFoundLog|null      $log        Log repository (injectable for tests).
 	 * @param CollisionScanner|null $collisions Collision scanner (injectable for tests).
+	 * @param UpgradeCta|null       $cta        Paid-tier CTA renderer (injectable for tests).
 	 */
-	public function __construct( ?NotFoundLog $log = null, ?CollisionScanner $collisions = null ) {
+	public function __construct( ?NotFoundLog $log = null, ?CollisionScanner $collisions = null, ?UpgradeCta $cta = null ) {
 		$this->log        = $log ?? new NotFoundLog();
 		$this->collisions = $collisions ?? new CollisionScanner();
+		$this->cta        = $cta ?? new UpgradeCta();
 	}
 
 	/**
@@ -242,6 +254,7 @@ final class LogPage {
 
 		$this->render_notice();
 		$this->render_collision_panel();
+		$this->render_upgrade_cta();
 
 		echo '<form method="get">';
 		echo '<input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '" />';
@@ -414,6 +427,54 @@ final class LogPage {
 		echo '</tbody></table>';
 		echo '<p><a href="' . esc_url( $rescan_url ) . '" class="button">' . esc_html__( 'Rescan now', 'ecwid-redirect-404-helper' ) . '</a></p>';
 		echo '</div>';
+	}
+
+	/**
+	 * Surface the most relevant paid-tier CTA for what the log actually holds.
+	 *
+	 * At most one CTA, and only when the data earns it: deleted-product
+	 * redirects when there are "deleted" verdicts to act on, otherwise
+	 * storefront-layer redirects when there are Ecwid sub-route 404s the
+	 * WordPress layer cannot reach. With neither, nothing shows. Each is
+	 * dismissible (handled by {@see UpgradeCta}).
+	 *
+	 * @return void
+	 */
+	private function render_upgrade_cta(): void {
+		if ( $this->log->count( array( 'verdict' => VerdictChecker::VERDICT_DELETED ) ) > 0 ) {
+			$this->cta->render(
+				'log-deleted-redirects',
+				__( 'Deleted products are still 404ing', 'ecwid-redirect-404-helper' ),
+				__( 'Some of these 404s are products or categories you deleted. The Redirect & 404 Manager app redirects a deleted item automatically — to its parent category or your homepage — the moment it is removed, so you never hand-fix them.', 'ecwid-redirect-404-helper' ),
+				array(
+					array(
+						'label'  => __( 'Automate deleted redirects', 'ecwid-redirect-404-helper' ),
+						'target' => DeepLink::TARGET_DELETED_REDIRECTS,
+					),
+				)
+			);
+
+			return;
+		}
+
+		// `||` short-circuits, so the category COUNT is skipped whenever the
+		// product COUNT already finds Ecwid 404s.
+		$has_ecwid_404s = $this->log->count( array( 'classification' => UrlClassifier::TYPE_PRODUCT ) ) > 0
+			|| $this->log->count( array( 'classification' => UrlClassifier::TYPE_CATEGORY ) ) > 0;
+
+		if ( $has_ecwid_404s ) {
+			$this->cta->render(
+				'log-storefront-layer',
+				__( 'Some 404s happen inside the Ecwid storefront', 'ecwid-redirect-404-helper' ),
+				__( 'These product and category 404s occur inside the embedded store, in the visitor\'s browser — they never reach WordPress, so a WordPress-layer redirect cannot catch them. The Redirect & 404 Manager app redirects at the storefront layer, which is the only place these can be fixed.', 'ecwid-redirect-404-helper' ),
+				array(
+					array(
+						'label'  => __( 'Fix storefront 404s in the app', 'ecwid-redirect-404-helper' ),
+						'target' => DeepLink::TARGET_STOREFRONT_LAYER,
+					),
+				)
+			);
+		}
 	}
 
 	/**

@@ -16,6 +16,7 @@ use FV\WPEcwidRedirectHelper\Collision\CollisionScanner;
 use FV\WPEcwidRedirectHelper\Cron\Tasks;
 use FV\WPEcwidRedirectHelper\Log\Schema;
 use FV\WPEcwidRedirectHelper\Redirect\Redirector;
+use FV\WPEcwidRedirectHelper\Upsell\UpgradeCta;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -82,6 +83,7 @@ final class Plugin {
 
 			( new Menu() )->register();
 			( new CollisionNotice() )->register();
+			( new UpgradeCta() )->register();
 
 			return;
 		}

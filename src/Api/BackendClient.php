@@ -71,11 +71,28 @@ final class BackendClient {
 	/**
 	 * The deleted-entities endpoint's 404 marker for "store never installed
 	 * the hosted app" — the wire contract that separates that definite answer
-	 * from a meaningless routing 404 (see `docs/backend-deleted-entities-endpoint.md`).
+	 * from a meaningless routing 404 (see `docs/parent-product-tasks.md` Part 1).
 	 *
 	 * @var string
 	 */
 	public const ERROR_STORE_NOT_TRACKED = 'store-not-tracked';
+
+	/**
+	 * Transient key prefix for the cached app-installed flag (store id appended).
+	 *
+	 * @var string
+	 */
+	private const APP_STATUS_TRANSIENT_PREFIX = 'fv_erh_app_status_';
+
+	/**
+	 * How long, in seconds, to cache the app-installed flag.
+	 *
+	 * The backend serves this with a 300s Redis TTL; the plugin holds it longer
+	 * because install state changes rarely and the CTA destination tolerates lag.
+	 *
+	 * @var int
+	 */
+	private const APP_STATUS_CACHE_TTL = 3600;
 
 	/**
 	 * How long, in seconds, to cache the deleted-entity ids.
@@ -282,6 +299,74 @@ final class BackendClient {
 	}
 
 	/**
+	 * Whether the hosted app is installed for this store, fetching if needed.
+	 *
+	 * Reads the public app-status endpoint (`{ v, installed }`). The result is a
+	 * tri-state so callers can fall back honestly:
+	 *  - `true`  — the app is installed right now.
+	 *  - `false` — definitely not installed (the backend's single-200 shape also
+	 *    answers `false` for a store it has never seen; a 404 marker body, if one
+	 *    ever appears, is treated the same way).
+	 *  - `null`  — transport/status/parse error, or the route is not deployed yet;
+	 *    indeterminate, not cached, retried next time.
+	 *
+	 * **Not render-safe** — this can perform a blocking request on a cache miss.
+	 * Page renders must use {@see self::peek_app_installed()} instead; this is for
+	 * the background cron warm and explicit refreshes.
+	 *
+	 * @param bool $force_refresh Bypass and refresh the transient cache.
+	 * @return bool|null
+	 */
+	public function get_app_installed( bool $force_refresh = false ): ?bool {
+		if ( ! $force_refresh ) {
+			$cached = $this->peek_app_installed();
+			if ( null !== $cached ) {
+				return $cached;
+			}
+		}
+
+		$installed = $this->fetch_app_installed();
+		if ( null === $installed ) {
+			return null;
+		}
+
+		// Wrapped in an array so a cached `false` is distinguishable from the
+		// `false` that get_transient() returns for a missing key.
+		set_transient( $this->app_status_transient_key(), array( 'installed' => $installed ), self::APP_STATUS_CACHE_TTL );
+
+		return $installed;
+	}
+
+	/**
+	 * The cached app-installed flag without touching the network.
+	 *
+	 * Render-safe: returns the transient value, or null when nothing is cached
+	 * (so the caller can fall back rather than block on a fetch).
+	 *
+	 * @return bool|null
+	 */
+	public function peek_app_installed(): ?bool {
+		$cached = get_transient( $this->app_status_transient_key() );
+
+		return ( is_array( $cached ) && isset( $cached['installed'] ) ) ? (bool) $cached['installed'] : null;
+	}
+
+	/**
+	 * The cached deleted-endpoint tracked flag without touching the network.
+	 *
+	 * Render-safe proxy for "the app was installed at some point": reads the
+	 * deleted-entities transient (warmed by the verdict feature) and returns its
+	 * tracked state, or null when nothing is cached.
+	 *
+	 * @return bool|null
+	 */
+	public function peek_deleted_tracked(): ?bool {
+		$cached = get_transient( $this->deleted_transient_key() );
+
+		return ( is_array( $cached ) && isset( $cached['tracked'] ) ) ? (bool) $cached['tracked'] : null;
+	}
+
+	/**
 	 * Report a captured 404 to the backend (fire-and-forget).
 	 *
 	 * @param string      $url_path The 404'd request path (1-2048 chars).
@@ -485,6 +570,40 @@ final class BackendClient {
 	}
 
 	/**
+	 * Fetch and parse the app-installed flag from the backend, bypassing the cache.
+	 *
+	 * @return bool|null True/false on a definite answer; null on any transport
+	 *                   error, unexpected status (incl. a route-absent 404), or
+	 *                   parse failure.
+	 */
+	private function fetch_app_installed(): ?bool {
+		$response = wp_remote_get(
+			$this->app_status_url(),
+			array(
+				'timeout' => self::RULES_TIMEOUT,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return null;
+		}
+
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			// Includes a route-absent 404 before prod promotion: indeterminate,
+			// not a definite "false". The backend's normal "unknown store" answer
+			// is a 200 with installed:false, handled below.
+			return null;
+		}
+
+		$decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $decoded ) || ! array_key_exists( 'installed', $decoded ) ) {
+			return null;
+		}
+
+		return (bool) $decoded['installed'];
+	}
+
+	/**
 	 * Normalize a decoded id list to positive integers.
 	 *
 	 * @param array<int,mixed> $raw Decoded JSON array.
@@ -534,6 +653,15 @@ final class BackendClient {
 	}
 
 	/**
+	 * Full URL of the app-status endpoint for this store.
+	 *
+	 * @return string
+	 */
+	private function app_status_url(): string {
+		return $this->base_url . '/api/storefront/app-status/' . $this->store_id;
+	}
+
+	/**
 	 * Transient key for this store's cached ruleset.
 	 *
 	 * @return string
@@ -549,5 +677,14 @@ final class BackendClient {
 	 */
 	private function deleted_transient_key(): string {
 		return self::DELETED_TRANSIENT_PREFIX . $this->store_id;
+	}
+
+	/**
+	 * Transient key for this store's cached app-installed flag.
+	 *
+	 * @return string
+	 */
+	private function app_status_transient_key(): string {
+		return self::APP_STATUS_TRANSIENT_PREFIX . $this->store_id;
 	}
 }

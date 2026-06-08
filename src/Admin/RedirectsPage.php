@@ -11,6 +11,8 @@ namespace FV\WPEcwidRedirectHelper\Admin;
 
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
 use FV\WPEcwidRedirectHelper\Redirect\RedirectStore;
+use FV\WPEcwidRedirectHelper\Upsell\DeepLink;
+use FV\WPEcwidRedirectHelper\Upsell\UpgradeCta;
 use FV\WPEcwidRedirectHelper\Url\RuleMatcher;
 
 defined( 'ABSPATH' ) || exit;
@@ -85,20 +87,30 @@ final class RedirectsPage {
 	private RuleMatcher $matcher;
 
 	/**
+	 * Paid-tier CTA renderer.
+	 *
+	 * @var UpgradeCta
+	 */
+	private UpgradeCta $cta;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param RedirectStore|null $store   Rule repository (injectable for tests).
 	 * @param NotFoundLog|null   $log     Log repository (injectable for tests).
 	 * @param RuleMatcher|null   $matcher Path normalizer (injectable for tests).
+	 * @param UpgradeCta|null    $cta     Paid-tier CTA renderer (injectable for tests).
 	 */
 	public function __construct(
 		?RedirectStore $store = null,
 		?NotFoundLog $log = null,
-		?RuleMatcher $matcher = null
+		?RuleMatcher $matcher = null,
+		?UpgradeCta $cta = null
 	) {
 		$this->store   = $store ?? new RedirectStore();
 		$this->log     = $log ?? new NotFoundLog();
 		$this->matcher = $matcher ?? new RuleMatcher();
+		$this->cta     = $cta ?? new UpgradeCta();
 	}
 
 	/**
@@ -228,7 +240,36 @@ final class RedirectsPage {
 		$table->display();
 		echo '</form>';
 
+		$this->render_upgrade_cta();
+
 		echo '</div>';
+	}
+
+	/**
+	 * Surface the bulk-mapping / migration-import CTA.
+	 *
+	 * In-context here because this is exactly where the merchant feels the free
+	 * tier's deliberate limit: one rule at a time, by hand. The app does the
+	 * same job in bulk and for migrations. Dismissible and shown once-then-gone.
+	 *
+	 * @return void
+	 */
+	private function render_upgrade_cta(): void {
+		$this->cta->render(
+			'redirects-bulk-migration',
+			__( 'Migrating a store, or fixing many URLs at once?', 'ecwid-redirect-404-helper' ),
+			__( 'These redirects are added one at a time, by hand. The Redirect & 404 Manager app maps old URLs to new ones in bulk and imports a migration map from Shopify, WooCommerce, or BigCommerce — the same work, without the per-URL effort.', 'ecwid-redirect-404-helper' ),
+			array(
+				array(
+					'label'  => __( 'Bulk-map URLs in the app', 'ecwid-redirect-404-helper' ),
+					'target' => DeepLink::TARGET_BULK_MAPPING,
+				),
+				array(
+					'label'  => __( 'Import a migration', 'ecwid-redirect-404-helper' ),
+					'target' => DeepLink::TARGET_MIGRATION_IMPORT,
+				),
+			)
+		);
 	}
 
 	/**
