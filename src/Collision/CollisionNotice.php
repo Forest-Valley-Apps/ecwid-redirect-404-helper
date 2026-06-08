@@ -108,8 +108,8 @@ final class CollisionNotice {
 			. '</strong> ';
 
 		printf(
-			/* translators: 1: number of pages, 2: example slugs. */
 			esc_html(
+				/* translators: 1: number of pages, 2: example slugs. */
 				_n(
 					'%1$d published page has a slug ending in an Ecwid product/category pattern (%2$s). The Ecwid store widget hijacks such URLs and shows a "not found" store page instead of your content.',
 					'%1$d published pages have slugs ending in an Ecwid product/category pattern (%2$s). The Ecwid store widget hijacks such URLs and shows a "not found" store page instead of your content.',

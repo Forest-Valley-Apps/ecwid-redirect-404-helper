@@ -207,8 +207,8 @@ final class CollisionScanner {
 		$types        = array_values( array_map( 'strval', $types ) );
 		$placeholders = implode( ',', array_fill( 0, count( $types ), '%s' ) );
 
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders -- %s placeholders generated to count, which the sniff cannot see; table from $wpdb->posts.
 		$rows = $wpdb->get_results(
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders -- %s placeholders generated to count, which the sniff cannot see.
 			$wpdb->prepare(
 				"SELECT ID, post_name, post_title, post_type FROM {$wpdb->posts}
 				WHERE post_status = 'publish'
@@ -220,6 +220,7 @@ final class CollisionScanner {
 			),
 			ARRAY_A
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders
 
 		if ( ! is_array( $rows ) ) {
 			return array();

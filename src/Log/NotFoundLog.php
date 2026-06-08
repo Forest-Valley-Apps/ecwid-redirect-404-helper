@@ -279,9 +279,9 @@ final class NotFoundLog {
 
 		$table = Schema::log_table();
 
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders -- table name from Schema::log_table(); NEEDS_VERDICT_WHERE is a static literal concatenated in; placeholders are built alongside their args.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table(); WHERE fragment is a static literal.
 				"SELECT classification, entity_id FROM {$table}
 				" . self::NEEDS_VERDICT_WHERE . "
 				GROUP BY classification, entity_id
@@ -294,6 +294,7 @@ final class NotFoundLog {
 			),
 			ARRAY_A
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders
 
 		if ( ! is_array( $rows ) ) {
 			return array();
@@ -321,9 +322,9 @@ final class NotFoundLog {
 
 		$table = Schema::log_table();
 
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders -- table name from Schema::log_table(); NEEDS_VERDICT_WHERE is a static literal concatenated in; placeholders are built alongside their args.
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table(); WHERE fragment is a static literal.
 				"SELECT COUNT(DISTINCT classification, entity_id) FROM {$table}
 				" . self::NEEDS_VERDICT_WHERE,
 				UrlClassifier::TYPE_PRODUCT,
@@ -331,6 +332,7 @@ final class NotFoundLog {
 				$stale_before
 			)
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders
 	}
 
 	/**

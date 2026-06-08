@@ -113,10 +113,10 @@ final class UpgradeCta {
 	/**
 	 * Render one contextual CTA, unless it has been dismissed.
 	 *
-	 * @param string                                  $cta_key Stable CTA identifier (also the dismiss key).
-	 * @param string                                  $heading Box heading (already translated).
-	 * @param string                                  $body    Body copy (already translated, plain text).
-	 * @param array<int,array{label:string,target:string}> $actions Buttons; the first is the primary action.
+	 * @param string $cta_key Stable CTA identifier (also the dismiss key).
+	 * @param string $heading Box heading (already translated).
+	 * @param string $body    Body copy (already translated, plain text).
+	 * @param array  $actions Buttons; each ['label' => string, 'target' => string], first is primary.
 	 * @return void
 	 */
 	public function render( string $cta_key, string $heading, string $body, array $actions ): void {
