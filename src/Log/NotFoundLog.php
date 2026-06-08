@@ -26,11 +26,17 @@ defined( 'ABSPATH' ) || exit;
  * repeat hits, the overwhelmingly common case, cost exactly one query.
  *
  * Direct queries against our own custom table are the point of this class, so
- * the WordPress.DB direct-query/caching sniffs are disabled file-wide instead
- * of per-line.
+ * the WordPress.DB direct-query/caching sniffs are disabled file-wide. The
+ * prepared-SQL sniffs are disabled file-wide too: every query interpolates the
+ * table name from Schema::log_table() (a trusted constant, never user input)
+ * and builds its %-placeholders alongside their args, which the sniffs cannot
+ * see through.
  *
  * phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
  * phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+ * phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+ * phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+ * phpcs:disable WordPress.DB.PreparedSQLPlaceholders
  */
 final class NotFoundLog {
 
@@ -279,7 +285,6 @@ final class NotFoundLog {
 
 		$table = Schema::log_table();
 
-		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders -- table name from Schema::log_table(); NEEDS_VERDICT_WHERE is a static literal concatenated in; placeholders are built alongside their args.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT classification, entity_id FROM {$table}
@@ -294,7 +299,6 @@ final class NotFoundLog {
 			),
 			ARRAY_A
 		);
-		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders
 
 		if ( ! is_array( $rows ) ) {
 			return array();
@@ -322,7 +326,6 @@ final class NotFoundLog {
 
 		$table = Schema::log_table();
 
-		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders -- table name from Schema::log_table(); NEEDS_VERDICT_WHERE is a static literal concatenated in; placeholders are built alongside their args.
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(DISTINCT classification, entity_id) FROM {$table}
@@ -332,7 +335,6 @@ final class NotFoundLog {
 				$stale_before
 			)
 		);
-		// phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders
 	}
 
 	/**
