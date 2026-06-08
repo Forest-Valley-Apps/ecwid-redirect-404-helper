@@ -52,11 +52,15 @@ final class UpgradeCta {
 	private static bool $style_printed = false;
 
 	/**
-	 * Deep-link builder.
+	 * Deep-link builder, or null until first needed.
 	 *
-	 * @var DeepLink
+	 * Built lazily ({@see self::deep_link()}) so merely constructing this class —
+	 * which happens whenever an admin page is wired up — does no discovery or
+	 * cache reads; that work only happens when a CTA actually renders.
+	 *
+	 * @var DeepLink|null
 	 */
-	private DeepLink $deep_link;
+	private ?DeepLink $deep_link;
 
 	/**
 	 * Constructor.
@@ -64,7 +68,20 @@ final class UpgradeCta {
 	 * @param DeepLink|null $deep_link Deep-link builder (injectable for tests).
 	 */
 	public function __construct( ?DeepLink $deep_link = null ) {
-		$this->deep_link = $deep_link ?? DeepLink::from_environment();
+		$this->deep_link = $deep_link;
+	}
+
+	/**
+	 * The deep-link builder, resolved from the environment on first use.
+	 *
+	 * @return DeepLink
+	 */
+	private function deep_link(): DeepLink {
+		if ( null === $this->deep_link ) {
+			$this->deep_link = DeepLink::from_environment();
+		}
+
+		return $this->deep_link;
 	}
 
 	/**
@@ -153,7 +170,7 @@ final class UpgradeCta {
 			printf(
 				'<a class="%1$s" href="%2$s" target="_blank" rel="noopener noreferrer">%3$s ↗</a> ',
 				esc_attr( $classes ),
-				esc_url( $this->deep_link->url_for( $target ) ),
+				esc_url( $this->deep_link()->url_for( $target ) ),
 				esc_html( $label )
 			);
 		}

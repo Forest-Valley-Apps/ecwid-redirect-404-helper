@@ -59,6 +59,7 @@ final class PluginTest extends TestCase {
 		Actions\expectAdded( 'admin_post_fv_erh_redirect_toggle' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_redirect_delete' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_dismiss_collisions' )->once();
+		Actions\expectAdded( 'admin_post_fv_erh_dismiss_cta' )->once();
 		Actions\expectAdded( 'admin_notices' )->once();
 		Actions\expectAdded( 'fv_erh_hourly_tasks' )->once();
 		Actions\expectAdded( 'save_post' )->once();

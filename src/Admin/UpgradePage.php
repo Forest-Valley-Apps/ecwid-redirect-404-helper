@@ -45,11 +45,15 @@ final class UpgradePage {
 	private const CAPABILITY = 'manage_options';
 
 	/**
-	 * Deep-link builder.
+	 * Deep-link builder, or null until first needed.
 	 *
-	 * @var DeepLink
+	 * Built lazily ({@see self::deep_link()}) so constructing the page (which the
+	 * admin menu does on every admin request) does no discovery or cache reads —
+	 * that work only happens when the page actually renders.
+	 *
+	 * @var DeepLink|null
 	 */
-	private DeepLink $deep_link;
+	private ?DeepLink $deep_link;
 
 	/**
 	 * Constructor.
@@ -57,7 +61,20 @@ final class UpgradePage {
 	 * @param DeepLink|null $deep_link Deep-link builder (injectable for tests).
 	 */
 	public function __construct( ?DeepLink $deep_link = null ) {
-		$this->deep_link = $deep_link ?? DeepLink::from_environment();
+		$this->deep_link = $deep_link;
+	}
+
+	/**
+	 * The deep-link builder, resolved from the environment on first use.
+	 *
+	 * @return DeepLink
+	 */
+	private function deep_link(): DeepLink {
+		if ( null === $this->deep_link ) {
+			$this->deep_link = DeepLink::from_environment();
+		}
+
+		return $this->deep_link;
 	}
 
 	/**
@@ -82,7 +99,7 @@ final class UpgradePage {
 		);
 		echo '</p>';
 
-		if ( ! $this->deep_link->can_deep_link() ) {
+		if ( ! $this->deep_link()->can_deep_link() ) {
 			echo '<p class="fv-erh-upgrade__note">'
 				. esc_html__( 'Connect your Ecwid store (Settings) to deep-link straight into these screens. Until then the buttons open the app listing.', 'ecwid-redirect-404-helper' )
 				. '</p>';
@@ -144,7 +161,7 @@ final class UpgradePage {
 		// The ↗ marks a link that opens the hosted app in a new tab.
 		printf(
 			'<a class="button button-primary" href="%1$s" target="_blank" rel="noopener noreferrer">%2$s ↗</a>',
-			esc_url( $this->deep_link->url_for( $feature['target'] ) ),
+			esc_url( $this->deep_link()->url_for( $feature['target'] ) ),
 			esc_html( $feature['cta'] )
 		);
 		echo '</div>';

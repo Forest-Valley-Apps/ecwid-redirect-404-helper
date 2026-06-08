@@ -49,9 +49,16 @@ final class TasksTest extends TestCase {
 	}
 
 	public function test_run_without_connection_and_warm_collision_cache_does_nothing(): void {
-		// Not connected: VerdictChecker::for_current_connection() must bail
-		// before touching any HTTP, and a warm collision cache skips the scan.
-		Functions\when( 'get_option' )->justReturn( array() );
+		// Not connected: VerdictChecker::for_current_connection() must bail before
+		// touching any HTTP, the store-id discovery yields nothing so the
+		// app-status warm is skipped, and a warm collision cache skips the scan.
+		// Returning each option's own default leaves store_id 0 / token '' (so the
+		// discovery's string cast stays scalar) and the connection unconfigured.
+		Functions\when( 'get_option' )->alias(
+			static function ( $key, $default = false ) {
+				return $default;
+			}
+		);
 		Functions\when( 'get_transient' )->justReturn( array() );
 
 		Functions\expect( 'wp_remote_get' )->never();
