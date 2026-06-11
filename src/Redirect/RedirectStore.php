@@ -360,8 +360,7 @@ final class RedirectStore {
 	 *
 	 * @param string $source      Normalized source pattern.
 	 * @param string $destination Validated destination.
-	 * @param array{exact:array<int,array>,wildcard:array<int,array>} $config The
-	 *              active rule set from {@see RedirectStore::lookup_config()}.
+	 * @param array  $config      The active rule set from {@see RedirectStore::lookup_config()}.
 	 * @return bool
 	 */
 	private function chain_revisits( string $source, string $destination, array $config ): bool {

@@ -156,11 +156,11 @@ final class Redirector {
 	 *
 	 * @param string $path        The normalized (404) request path.
 	 * @param string $destination The resolved destination about to be served.
-	 * @param array  $match       The match result that produced it.
+	 * @param array  $matched     The match result that produced it.
 	 * @param array  $lookup      The built rule lookup for this request.
 	 * @return bool
 	 */
-	private function loops( string $path, string $destination, array $match, array $lookup ): bool {
+	private function loops( string $path, string $destination, array $matched, array $lookup ): bool {
 		if ( '/' !== substr( $destination, 0, 1 ) || false !== strpos( $destination, '://' ) ) {
 			// Absolute/external destination — it cannot re-enter this matcher.
 			return false;
@@ -172,6 +172,6 @@ final class Redirector {
 
 		$re_match = $this->matcher->match_path( $destination, $lookup );
 
-		return null !== $re_match && ( $re_match['source'] ?? null ) === ( $match['source'] ?? null );
+		return null !== $re_match && ( $re_match['source'] ?? null ) === ( $matched['source'] ?? null );
 	}
 }
