@@ -91,6 +91,17 @@ final class EcwidCatalogClient {
 	private const TIMEOUT = 5;
 
 	/**
+	 * Maximum product ids per batched existence request.
+	 *
+	 * Ecwid's products search returns at most 100 items per page (its `limit`
+	 * maximum and default), so a longer id list must be split — an overflowing
+	 * page would silently misread the truncated tail as absent.
+	 *
+	 * @var int
+	 */
+	private const BATCH_LIMIT = 100;
+
+	/**
 	 * Ecwid store id.
 	 *
 	 * @var int
@@ -142,6 +153,56 @@ final class EcwidCatalogClient {
 	 */
 	public function category_exists( int $category_id ): string {
 		return $this->check( 'categories', $category_id );
+	}
+
+	/**
+	 * Whether each of a set of products currently exists in the catalog.
+	 *
+	 * One products-search request per {@see self::BATCH_LIMIT} ids — Ecwid's
+	 * search accepts a comma-separated `productId` list (every other search
+	 * param is then ignored), so a whole verdict batch costs one HTTP
+	 * round-trip instead of one per product. Categories have no equivalent
+	 * id-list search (only parent-scoped params), so there is deliberately no
+	 * category twin of this method.
+	 *
+	 * The answer covers every requested id: the search 200s and simply omits
+	 * absent products from `items`, so a missing id is a definite NOT_FOUND —
+	 * with the same public-token caveat as the single lookup (a disabled
+	 * product reads as absent). An indeterminate request fails the whole batch
+	 * (null) rather than guessing, mirroring the single lookup's UNKNOWN.
+	 *
+	 * @param array<int,int> $product_ids Ecwid product ids.
+	 * @return array<int,string>|null Product id => EXISTS / NOT_FOUND for every
+	 *                                requested id, or null when indeterminate
+	 *                                (transport error, unexpected status,
+	 *                                unparseable body, or no token yet).
+	 */
+	public function products_exist( array $product_ids ): ?array {
+		if ( array() === $product_ids ) {
+			return array();
+		}
+
+		if ( '' === $this->public_token ) {
+			// No token discovered yet (Session 3's job) — can't authenticate.
+			return null;
+		}
+
+		$statuses = array();
+
+		foreach ( array_chunk( $product_ids, self::BATCH_LIMIT ) as $chunk ) {
+			$found = $this->fetch_existing_product_ids( $chunk );
+			if ( null === $found ) {
+				return null;
+			}
+
+			foreach ( $chunk as $id ) {
+				$statuses[ (int) $id ] = in_array( (int) $id, $found, true )
+					? self::EXISTS
+					: self::NOT_FOUND;
+			}
+		}
+
+		return $statuses;
 	}
 
 	/**
@@ -207,17 +268,69 @@ final class EcwidCatalogClient {
 	}
 
 	/**
+	 * Fetch the subset of a product-id chunk that exists in the catalog.
+	 *
+	 * @param array<int,int> $ids Product ids (at most BATCH_LIMIT of them).
+	 * @return array<int,int>|null The ids present in the catalog, or null when
+	 *                             the request was indeterminate.
+	 */
+	private function fetch_existing_product_ids( array $ids ): ?array {
+		$response = $this->request( $this->products_batch_url( $ids ) );
+
+		if ( is_wp_error( $response ) ) {
+			return null;
+		}
+
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			return null;
+		}
+
+		$decoded = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $decoded ) || ! isset( $decoded['items'] ) || ! is_array( $decoded['items'] ) ) {
+			return null;
+		}
+
+		$found = array();
+
+		foreach ( $decoded['items'] as $item ) {
+			if ( is_array( $item ) && isset( $item['id'] ) && is_numeric( $item['id'] ) ) {
+				$found[] = (int) $item['id'];
+			}
+		}
+
+		return $found;
+	}
+
+	/**
 	 * Issue an authenticated catalog GET and return the HTTP status code.
 	 *
-	 * The single source of the catalog request shape (timeout + auth header) —
-	 * every catalog call goes through here. Callers map the status to their own
+	 * For callers that only need the status; they map it to their own
 	 * tri-state constants.
 	 *
 	 * @param string $url Full request URL.
 	 * @return int|null The HTTP status code, or null on a transport error.
 	 */
 	private function request_status( string $url ): ?int {
-		$response = wp_remote_get(
+		$response = $this->request( $url );
+
+		if ( is_wp_error( $response ) ) {
+			return null;
+		}
+
+		return (int) wp_remote_retrieve_response_code( $response );
+	}
+
+	/**
+	 * Issue an authenticated catalog GET and return the raw response.
+	 *
+	 * The single source of the catalog request shape (timeout + auth header) —
+	 * every catalog call goes through here.
+	 *
+	 * @param string $url Full request URL.
+	 * @return array|\WP_Error Result of {@see wp_remote_get()}.
+	 */
+	private function request( string $url ) {
+		return wp_remote_get(
 			$url,
 			array(
 				'timeout' => self::TIMEOUT,
@@ -227,12 +340,6 @@ final class EcwidCatalogClient {
 				),
 			)
 		);
-
-		if ( is_wp_error( $response ) ) {
-			return null;
-		}
-
-		return (int) wp_remote_retrieve_response_code( $response );
 	}
 
 	/**
@@ -253,6 +360,24 @@ final class EcwidCatalogClient {
 			$this->store_id,
 			$collection,
 			$id
+		);
+	}
+
+	/**
+	 * Full URL for a batched product-existence lookup.
+	 *
+	 * Requests only each item's `id` field, so the response stays small no
+	 * matter how many products the chunk names.
+	 *
+	 * @param array<int,int> $ids Product ids.
+	 * @return string
+	 */
+	private function products_batch_url( array $ids ): string {
+		return sprintf(
+			'%s/%d/products?productId=%s&responseFields=items(id)',
+			$this->base_url,
+			$this->store_id,
+			implode( ',', array_map( 'intval', $ids ) )
 		);
 	}
 

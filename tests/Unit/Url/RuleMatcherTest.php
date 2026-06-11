@@ -60,6 +60,8 @@ final class RuleMatcherTest extends TestCase {
 			'bare hash-bang kept as-is'    => array( '#!/', '#!/' ),
 			'hash route strips query'      => array( '#!/Foo?utm=x', '#!/foo' ),
 			'wildcard suffix kept'         => array( '*823816367', '*823816367' ),
+			'lowercases cyrillic'          => array( '/Крутой-Товар-p123', '/крутой-товар-p123' ),
+			'lowercases accented latin'    => array( '/CAFÉ-Latte/', '/café-latte' ),
 		);
 	}
 
@@ -270,6 +272,22 @@ final class RuleMatcherTest extends TestCase {
 		$this->assertSame( '', $result['base_path'] );
 	}
 
+	public function test_leading_wildcard_accepts_letter_boundary(): void {
+		$wildcards = array(
+			array(
+				'source'      => '*823816367',
+				'destination' => '/winter-sale',
+			),
+		);
+
+		// The boundary guard only rejects digits (partial-id tails); a letter
+		// right before the suffix is a legitimate match.
+		$result = $this->matcher->match_wildcard( '/sku-a823816367', $wildcards );
+
+		$this->assertNotNull( $result );
+		$this->assertSame( '/winter-sale', $result['destination'] );
+	}
+
 	public function test_leading_wildcard_rejects_partial_id_match(): void {
 		$wildcards = array(
 			array(
@@ -424,6 +442,53 @@ final class RuleMatcherTest extends TestCase {
 		$this->assertNotNull( $result );
 		$this->assertSame( '/news/my-post', $result['destination'] );
 		$this->assertTrue( $result['wildcard'] );
+	}
+
+	public function test_match_path_falls_back_to_alt_format_for_wildcards(): void {
+		// Rule stored as a hash-route wildcard; request arrives as a clean URL.
+		// Exercises the final alt-path wildcard retry in match_path().
+		$lookup = $this->matcher->build_lookup(
+			array(
+				'wildcard' => array(
+					array(
+						'source'      => '#!/old-blog/*',
+						'destination' => '/new-blog/*',
+					),
+				),
+			)
+		);
+
+		$result = $this->matcher->match_path( '/old-blog/x', $lookup );
+
+		$this->assertNotNull( $result );
+		$this->assertTrue( $result['wildcard'] );
+		$this->assertSame( '', $result['base_path'] );
+		// The `/prefix/*` doubled-slash quirk applies here too (pinned above).
+		$this->assertSame( '/new-blog//x', $result['destination'] );
+	}
+
+	public function test_match_path_does_not_restore_hash_prefix_on_wildcard_destination(): void {
+		// A hash path matching a wildcard leaves `#!` in base_path and the
+		// destination slash-rooted. The parent's processRules() re-prepends
+		// `#!/` before navigating — client-side repair that is deliberately
+		// not ported (see the match_path() docblock): the WP layer never
+		// serves a request for a hash route.
+		$lookup = $this->matcher->build_lookup(
+			array(
+				'wildcard' => array(
+					array(
+						'source'      => '/summer-sale*',
+						'destination' => '/winter-sale*',
+					),
+				),
+			)
+		);
+
+		$result = $this->matcher->match_path( '#!/summer-sale/c/196630251', $lookup );
+
+		$this->assertNotNull( $result );
+		$this->assertSame( '#!', $result['base_path'] );
+		$this->assertSame( '/winter-sale/c/196630251', $result['destination'] );
 	}
 
 	public function test_match_path_returns_null_when_nothing_matches(): void {

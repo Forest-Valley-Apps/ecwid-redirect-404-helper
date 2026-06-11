@@ -174,6 +174,147 @@ final class RedirectorTest extends WpdbTestCase {
 		}
 	}
 
+	public function test_wildcard_matched_mid_path_reapplies_the_mount_prefix(): void {
+		Functions\when( 'is_404' )->justReturn( true );
+		$_SERVER['REQUEST_URI'] = '/shop/old-category/widget';
+
+		// The wildcard prefix matches mid-path (ported parity); the matcher
+		// returns the leading `/shop` as base_path, and — like the parent's
+		// executeRedirect() — it must be re-prepended to the site-relative
+		// destination, or the store's mount prefix is lost in the 301.
+		$this->with_rules(
+			array(
+				array(
+					'source'      => '/old-category/*',
+					'destination' => '/new-category/*',
+					'is_wildcard' => '1',
+				),
+			)
+		);
+
+		Functions\expect( 'wp_redirect' )
+			->once()
+			->with( '/shop/new-category/widget', 301, 'Redirect & 404 Helper for Ecwid' );
+
+		try {
+			$this->redirector()->maybe_redirect();
+			$this->fail( 'A served redirect must terminate the request.' );
+		} catch ( RuntimeException $e ) {
+			$this->assertSame( 'terminated', $e->getMessage() );
+		}
+
+		$this->assertSame( md5( '/old-category/*' ), $this->prepared[0]['args'][1] );
+	}
+
+	public function test_base_path_is_not_prepended_to_absolute_destinations(): void {
+		Functions\when( 'is_404' )->justReturn( true );
+		$_SERVER['REQUEST_URI'] = '/shop/old-category/widget';
+
+		$this->with_rules(
+			array(
+				array(
+					'source'      => '/old-category/*',
+					'destination' => 'https://example.com/cat/*',
+					'is_wildcard' => '1',
+				),
+			)
+		);
+
+		Functions\expect( 'wp_redirect' )
+			->once()
+			->with( 'https://example.com/cat/widget', 301, 'Redirect & 404 Helper for Ecwid' );
+
+		try {
+			$this->redirector()->maybe_redirect();
+			$this->fail( 'A served redirect must terminate the request.' );
+		} catch ( RuntimeException $e ) {
+			$this->assertSame( 'terminated', $e->getMessage() );
+		}
+	}
+
+	public function test_destination_equal_to_the_request_path_is_not_served(): void {
+		Functions\when( 'is_404' )->justReturn( true );
+		$_SERVER['REQUEST_URI'] = '/old/landing';
+
+		// `/old/landing` 404s and matches `/old/*` — whose destination IS
+		// `/old/landing`. Serving that 301 would bounce the browser straight
+		// back here; the backstop must fall through to the plain 404 render.
+		$this->with_rules(
+			array(
+				array(
+					'source'      => '/old/*',
+					'destination' => '/old/landing',
+					'is_wildcard' => '1',
+				),
+			)
+		);
+
+		Functions\expect( 'wp_redirect' )->never();
+
+		$this->redirector()->maybe_redirect();
+
+		// Bailed before the hit was recorded.
+		$this->assertCount( 0, $this->prepared );
+	}
+
+	public function test_destination_rematching_the_same_rule_is_not_served(): void {
+		Functions\when( 'is_404' )->justReturn( true );
+		$_SERVER['REQUEST_URI'] = '/docs/page';
+
+		// A self-prefixing wildcard (`/docs/*` → `/docs/v2/*`) resolves to
+		// `/docs/v2/page`, which the same rule matches again — an unbounded
+		// `/docs/v2/v2/…` chain if served. Save-time validation rejects this
+		// shape now; the runtime backstop covers rows that predate it.
+		$this->with_rules(
+			array(
+				array(
+					'source'      => '/docs/*',
+					'destination' => '/docs/v2/*',
+					'is_wildcard' => '1',
+				),
+			)
+		);
+
+		Functions\expect( 'wp_redirect' )->never();
+
+		$this->redirector()->maybe_redirect();
+
+		$this->assertCount( 0, $this->prepared );
+	}
+
+	public function test_chain_into_a_different_rule_still_serves_the_first_hop(): void {
+		Functions\when( 'is_404' )->justReturn( true );
+		$_SERVER['REQUEST_URI'] = '/a';
+
+		// /a → /b → /c is a chain, not a loop: each hop is a separate request
+		// the browser follows, so the backstop must not over-bail.
+		$this->with_rules(
+			array(
+				array(
+					'source'      => '/a',
+					'destination' => '/b',
+					'is_wildcard' => '0',
+				),
+				array(
+					'source'      => '/b',
+					'destination' => '/c',
+					'is_wildcard' => '0',
+				),
+			)
+		);
+
+		Functions\expect( 'wp_redirect' )
+			->once()
+			->with( '/b', 301, 'Redirect & 404 Helper for Ecwid' );
+
+		try {
+			$this->redirector()->maybe_redirect();
+			$this->fail( 'A served redirect must terminate the request.' );
+		} catch ( RuntimeException $e ) {
+			$this->assertSame( 'terminated', $e->getMessage() );
+		}
+	}
+
 	public function test_absolute_destination_keeps_its_scheme_slashes(): void {
 		Functions\when( 'is_404' )->justReturn( true );
 		$_SERVER['REQUEST_URI'] = '/moved';

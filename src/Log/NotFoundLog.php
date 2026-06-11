@@ -22,8 +22,10 @@ defined( 'ABSPATH' ) || exit;
  * path can never race into duplicate rows.
  *
  * Growth is capped: when a *new* row lands, the oldest rows (by `last_seen`)
- * beyond the cap are pruned. The count check runs only on fresh inserts —
- * repeat hits, the overwhelmingly common case, cost exactly one query.
+ * beyond the cap are pruned. The cap check runs only on fresh inserts —
+ * repeat hits, the overwhelmingly common case, cost exactly one query — and
+ * tracks the row count approximately in a transient, so a fresh insert
+ * normally costs a counter bump rather than a `COUNT(*)` scan.
  *
  * Direct queries against our own custom table are the point of this class, so
  * the WordPress.DB direct-query/caching sniffs are disabled file-wide. The
@@ -80,6 +82,38 @@ final class NotFoundLog {
 	private const DEFAULT_MAX_ROWS = 10000;
 
 	/**
+	 * Transient holding the approximate row count.
+	 *
+	 * A transient (not an option) on purpose: the value is re-derivable from
+	 * a real `COUNT(*)` whenever it is missing, expired or evicted, and the
+	 * uninstall routine's `fv_erh_` transient sweep cleans it up for free.
+	 *
+	 * @var string
+	 */
+	private const COUNT_TRANSIENT = 'fv_erh_404_log_count';
+
+	/**
+	 * How long the approximate row count is trusted before a re-seed.
+	 *
+	 * Lost increments under concurrent fresh inserts make the counter drift
+	 * low; the TTL bounds that drift to a day before the next real count.
+	 *
+	 * @var int
+	 */
+	private const COUNT_TTL = DAY_IN_SECONDS;
+
+	/**
+	 * How far below the cap a prune over-deletes.
+	 *
+	 * Deleting exactly down to the cap would re-trigger COUNT + DELETE on
+	 * every following fresh insert; the slack makes the next ~100 unique
+	 * 404s cost only the counter bump again.
+	 *
+	 * @var int
+	 */
+	private const PRUNE_SLACK = 100;
+
+	/**
 	 * Shared WHERE fragment selecting Ecwid entities with a missing or stale
 	 * verdict. Placeholders, in order: product type, category type, the
 	 * stale-before cutoff. Used by {@see self::entities_needing_verdict()} and
@@ -130,6 +164,10 @@ final class NotFoundLog {
 
 		// A repeat hit keeps the row's existing referrer unless the new hit
 		// carries one — the most recent *known* origin is the useful one.
+		// Status drops back to 'new' on every hit: the Redirector runs at
+		// priority 5 and capture at 20, so a path that 404s here is by
+		// definition not currently redirected — a row left at 'redirected'
+		// would hide the regression when its rule is deleted or disabled.
 		$result = $wpdb->query(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table().
@@ -139,6 +177,7 @@ final class NotFoundLog {
 				ON DUPLICATE KEY UPDATE
 					hit_count = hit_count + 1,
 					last_seen = VALUES(last_seen),
+					status    = VALUES(status),
 					referrer  = IF(VALUES(referrer) = '', referrer, VALUES(referrer))",
 				md5( $path ),
 				$path,
@@ -365,10 +404,13 @@ final class NotFoundLog {
 	}
 
 	/**
-	 * Iterate every log row in chunks, newest first, for the CSV export.
+	 * Iterate every log row in chunks, newest-captured first, for the CSV export.
 	 *
 	 * Keeps memory bounded at the chunk size instead of loading up to the
-	 * 10k-row cap at once.
+	 * 10k-row cap at once. Pages by keyset (`WHERE id < last-id-seen`) rather
+	 * than LIMIT/OFFSET: hits landing mid-export bump `last_seen` and shift
+	 * offset windows around, duplicating or skipping rows, whereas a row's
+	 * `id` never moves.
 	 *
 	 * @param int $chunk_size Rows per SELECT.
 	 * @return \Generator<array<string,mixed>>
@@ -378,15 +420,15 @@ final class NotFoundLog {
 
 		$chunk_size = max( 1, $chunk_size );
 		$table      = Schema::log_table();
-		$offset     = 0;
+		$before_id  = PHP_INT_MAX;
 
 		do {
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
 					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table().
-					"SELECT * FROM {$table} ORDER BY last_seen DESC, id DESC LIMIT %d OFFSET %d",
-					$chunk_size,
-					$offset
+					"SELECT * FROM {$table} WHERE id < %d ORDER BY id DESC LIMIT %d",
+					$before_id,
+					$chunk_size
 				),
 				ARRAY_A
 			);
@@ -395,10 +437,9 @@ final class NotFoundLog {
 			$fetched = count( $rows );
 
 			foreach ( $rows as $row ) {
+				$before_id = (int) $row['id'];
 				yield $row;
 			}
-
-			$offset += $chunk_size;
 		} while ( $fetched === $chunk_size );
 	}
 
@@ -444,6 +485,14 @@ final class NotFoundLog {
 	/**
 	 * Delete the oldest rows beyond the cap.
 	 *
+	 * Called once per fresh insert, so an unconditional `COUNT(*)` here would
+	 * be paid for every unique 404. Instead the row count is approximated in
+	 * a transient: each fresh insert bumps it, and only when the counter
+	 * crosses the cap does a real count run — re-counted first because manual
+	 * deletes can leave the counter high. A prune then over-deletes by
+	 * {@see self::PRUNE_SLACK} so the next batch of fresh inserts is again
+	 * counter-bump-only.
+	 *
 	 * @return void
 	 */
 	private function prune(): void {
@@ -456,21 +505,47 @@ final class NotFoundLog {
 		 */
 		$max = max( 100, (int) apply_filters( 'fv_erh_404_log_max_rows', self::DEFAULT_MAX_ROWS ) );
 
-		$table = Schema::log_table();
+		$table  = Schema::log_table();
+		$approx = get_transient( self::COUNT_TRANSIENT );
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table().
-		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+		if ( false === $approx ) {
+			// Missing counter (first run, expired, evicted): seed it from a
+			// real count, which already includes the row just inserted.
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table().
+			$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+		} else {
+			$count = (int) $approx + 1;
+		}
+
 		if ( $count <= $max ) {
+			set_transient( self::COUNT_TRANSIENT, $count, self::COUNT_TTL );
 			return;
 		}
 
-		$wpdb->query(
-			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table().
-				"DELETE FROM {$table} ORDER BY last_seen ASC, id ASC LIMIT %d",
-				$count - $max
-			)
-		);
+		if ( false !== $approx ) {
+			// The approximate counter crossed the cap — verify against the
+			// real count before deleting anything.
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table().
+			$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+		}
+
+		if ( $count > $max ) {
+			// Keep the slack sane for small filtered caps (never more than
+			// a tenth of the cap), then delete down past it in one chunk.
+			$target = $max - min( self::PRUNE_SLACK, intdiv( $max, 10 ) );
+
+			$wpdb->query(
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name from Schema::log_table().
+					"DELETE FROM {$table} ORDER BY last_seen ASC, id ASC LIMIT %d",
+					$count - $target
+				)
+			);
+
+			$count = $target;
+		}
+
+		set_transient( self::COUNT_TRANSIENT, $count, self::COUNT_TTL );
 	}
 
 	/**

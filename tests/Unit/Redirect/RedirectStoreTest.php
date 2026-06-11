@@ -13,7 +13,7 @@ use FV\WPEcwidRedirectHelper\Redirect\RedirectStore;
 use FV\WPEcwidRedirectHelper\Tests\Unit\WpdbTestCase;
 
 /**
- * Covers create validation (source/destination/duplicate/loop), the
+ * Covers create validation (source/destination/duplicate/loop/cycle), the
  * normalize-then-hash storage contract, deletes, the active toggle, hit
  * recording, and the exact/wildcard lookup split.
  */
@@ -31,8 +31,10 @@ final class RedirectStoreTest extends WpdbTestCase {
 
 		$this->inserted = array();
 
-		// Default: no existing rule, inserts succeed.
+		// Default: no existing rule, inserts succeed, and the loop check's
+		// lookup_config() read sees an empty active set.
 		$this->wpdb->shouldReceive( 'get_row' )->andReturn( null )->byDefault();
+		$this->wpdb->shouldReceive( 'get_results' )->andReturn( array() )->byDefault();
 		$this->wpdb->shouldReceive( 'insert' )
 			->andReturnUsing(
 				function ( $table, $data ) {
@@ -91,6 +93,127 @@ final class RedirectStoreTest extends WpdbTestCase {
 		$this->assertSame( RedirectStore::INVALID_DESTINATION, $store->add( '/a', '//evil.example/x' ) );
 		// Source == destination after normalization is a redirect loop.
 		$this->assertSame( RedirectStore::INVALID_DESTINATION, $store->add( '/a', '/A/' ) );
+	}
+
+	public function test_add_rejects_a_two_rule_cycle(): void {
+		// /a → /b is live; adding /b → /a would 301 visitors back and forth
+		// until the browser gives up (ERR_TOO_MANY_REDIRECTS).
+		$this->wpdb->shouldReceive( 'get_results' )
+			->once()
+			->andReturn(
+				array(
+					array(
+						'source'      => '/a',
+						'destination' => '/b',
+						'is_wildcard' => '0',
+					),
+				)
+			);
+		$this->wpdb->shouldReceive( 'insert' )->never();
+
+		$this->assertSame( RedirectStore::INVALID_DESTINATION, ( new RedirectStore() )->add( '/b', '/a' ) );
+	}
+
+	public function test_add_rejects_a_wildcard_destination_inside_its_own_source_scope(): void {
+		$store = new RedirectStore();
+
+		$this->wpdb->shouldReceive( 'insert' )->never();
+		// The self-scope check needs no DB read — it fails before the
+		// existing-rules probe.
+		$this->wpdb->shouldReceive( 'get_results' )->never();
+
+		// `/docs/v2/*` re-matches `/docs/*` ⇒ /docs/v2/v2/… unbounded chain.
+		$this->assertSame( RedirectStore::INVALID_DESTINATION, $store->add( '/docs/*', '/docs/v2/*' ) );
+		// `/old/landing` re-matches `/old/*` ⇒ self-301 if the landing 404s.
+		$this->assertSame( RedirectStore::INVALID_DESTINATION, $store->add( '/old/*', '/old/landing' ) );
+	}
+
+	public function test_add_rejects_a_transitive_three_rule_cycle(): void {
+		// /a → /b and /b → /c are live; adding /c → /a closes a three-rule
+		// cycle /c → /a → /b → /c. No two sources are string-equal to the new
+		// destination, so only the full chain walk (parent detectLoop parity)
+		// catches it.
+		$this->wpdb->shouldReceive( 'get_results' )
+			->once()
+			->andReturn(
+				array(
+					array(
+						'source'      => '/a',
+						'destination' => '/b',
+						'is_wildcard' => '0',
+					),
+					array(
+						'source'      => '/b',
+						'destination' => '/c',
+						'is_wildcard' => '0',
+					),
+				)
+			);
+		$this->wpdb->shouldReceive( 'insert' )->never();
+
+		$this->assertSame( RedirectStore::INVALID_DESTINATION, ( new RedirectStore() )->add( '/c', '/a' ) );
+	}
+
+	public function test_add_allows_a_two_rule_chain_that_does_not_close(): void {
+		// /a → /b is live; adding /b → /c extends the chain but never returns to
+		// /a, so the walk terminates — a chain, not a loop (save must succeed).
+		$this->wpdb->shouldReceive( 'get_results' )
+			->once()
+			->andReturn(
+				array(
+					array(
+						'source'      => '/a',
+						'destination' => '/b',
+						'is_wildcard' => '0',
+					),
+				)
+			);
+
+		$this->assertSame( RedirectStore::ADDED, ( new RedirectStore() )->add( '/b', '/c' ) );
+	}
+
+	public function test_add_rejects_an_exact_rule_cycling_back_through_a_new_wildcard(): void {
+		// /b → /a/x is live; adding /a/* → /b closes the cycle
+		// /a/x → /b → /a/x even though no two sources are string-equal.
+		$this->wpdb->shouldReceive( 'get_results' )
+			->once()
+			->andReturn(
+				array(
+					array(
+						'source'      => '/b',
+						'destination' => '/a/x',
+						'is_wildcard' => '0',
+					),
+				)
+			);
+		$this->wpdb->shouldReceive( 'insert' )->never();
+
+		$this->assertSame( RedirectStore::INVALID_DESTINATION, ( new RedirectStore() )->add( '/a/*', '/b' ) );
+	}
+
+	public function test_add_allows_a_chain_into_a_different_rule(): void {
+		// /a → /b is live; adding /c → /a is a chain (/c → /a → /b), not a
+		// cycle — the parent only warns on chains, so the save must succeed.
+		$this->wpdb->shouldReceive( 'get_results' )
+			->once()
+			->andReturn(
+				array(
+					array(
+						'source'      => '/a',
+						'destination' => '/b',
+						'is_wildcard' => '0',
+					),
+				)
+			);
+
+		$this->assertSame( RedirectStore::ADDED, ( new RedirectStore() )->add( '/c', '/a' ) );
+	}
+
+	public function test_add_allows_a_wildcard_move_between_distinct_prefixes(): void {
+		$result = ( new RedirectStore() )->add( '/old-category/*', '/new-category/*' );
+
+		$this->assertSame( RedirectStore::ADDED, $result );
+		$this->assertSame( 1, $this->inserted['is_wildcard'] );
 	}
 
 	public function test_add_rejects_duplicate_source(): void {

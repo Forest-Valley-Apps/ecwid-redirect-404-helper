@@ -395,6 +395,11 @@ final class BackendClient {
 	/**
 	 * Report a redirect hit to the backend (fire-and-forget).
 	 *
+	 * Deliberately has no caller yet: this is the speced public hit-report
+	 * endpoint (`POST /api/storefront/hit`), kept so the WordPress layer can
+	 * start reporting rule hits to the hosted dashboard when that surface
+	 * needs them — remove only together with that plan.
+	 *
 	 * @param string $source_path The source path that matched a rule.
 	 * @return void
 	 */

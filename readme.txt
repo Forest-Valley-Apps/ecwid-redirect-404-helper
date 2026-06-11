@@ -122,19 +122,35 @@ and never writes to your store.
 
 == Privacy and external services ==
 
-This plugin connects to one external service: the hosted Redirect & 404 Manager backend
-(https://redirect-manager-prod.up.railway.app), the companion to the paid Ecwid app.
+This plugin connects to two external services. Neither is contacted until you click **Connect**
+on the plugin's settings page — that is the explicit opt-in, and **Disconnect** stops both. No
+analytics or visitor tracking is performed by either connection.
 
-* **When** — only after you click **Connect** on the plugin's settings page. Connecting is the
-  explicit opt-in; **Disconnect** stops all reporting.
-* **What** — while connected, the plugin reports Ecwid store 404s (the broken store path and its
-  referrer), scoped by your public Ecwid store ID, and requests catalog verdicts for those URLs.
-  WordPress-page 404s are stored only in your own site's database and are never transmitted.
+**1. The hosted Redirect & 404 Manager backend** (https://redirect-manager-prod.up.railway.app),
+operated by Forest Valley as the companion service to the paid Ecwid app.
+
+* **When** — only while connected.
+* **What** — the plugin reports Ecwid store 404s (the broken store path and its referrer),
+  scoped by your public Ecwid store ID, and reads your store's deletion history and paid-app
+  install status. WordPress-page 404s are stored only in your own site's database and are never
+  transmitted. Nothing beyond the requested URL, its referrer, and the store ID is sent.
 * **Why** — to classify whether an Ecwid 404 points to a deleted product, a live item, or a typo.
+* **Service page:** https://apps.fv.dev/redirect-404-manager/ — **Privacy policy:**
+  https://apps.fv.dev/privacy/
+
+**2. The Ecwid API** (https://app.ecwid.com/api/v3), operated by Ecwid by Lightspeed — the
+platform your store already runs on.
+
+* **When** — only while connected, when the plugin checks catalog verdicts: from the 404 Log's
+  "Check catalog" button and from the hourly background task.
+* **What** — read-only existence lookups for the product and category IDs found in your own 404
+  log, authenticated with the store's public storefront token (discovered from the official
+  Ecwid plugin; this plugin never reads or sends the secret token). No visitor data is sent.
+* **Why** — to tell whether a 404'd product or category is still live in your catalog.
+* **Privacy policy:** https://www.lightspeedhq.com/legal/privacy-policy/
 
 The plugin uses only public read/report endpoints, never the write API, and never changes your
-store. No analytics or visitor tracking is performed, and nothing beyond the requested URL and
-its referrer is sent.
+store.
 
 == Screenshots ==
 

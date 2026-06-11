@@ -373,16 +373,28 @@ final class LogPage {
 	/**
 	 * Render the false-404 collision panel.
 	 *
-	 * Runs the (cached) scan — this page is the one admin surface allowed to
-	 * trigger it. With no collisions only a one-line all-clear with a Rescan
-	 * link is shown.
+	 * Render-safe: only the cached scan result is read. A cold cache shows a
+	 * one-line "scan pending" and schedules a one-off background scan — the
+	 * unindexable REGEXP query never runs inline in a page render (the
+	 * explicit Rescan action is the synchronous path). With no collisions
+	 * only a one-line all-clear with a Rescan link is shown.
 	 *
 	 * @return void
 	 */
 	private function render_collision_panel(): void {
-		$collisions = $this->collisions->get_collisions();
+		$collisions = $this->collisions->cached_collisions();
 
 		$rescan_url = $this->action_url( 'rescan_collisions' );
+
+		if ( null === $collisions ) {
+			$this->collisions->schedule_scan();
+
+			echo '<p class="fv-erh-collision-allclear">'
+				. esc_html__( 'Slug check: scan pending — results appear after the next background run.', 'ecwid-redirect-404-helper' )
+				. ' <a href="' . esc_url( $rescan_url ) . '">' . esc_html__( 'Scan now', 'ecwid-redirect-404-helper' ) . '</a></p>';
+
+			return;
+		}
 
 		if ( array() === $collisions ) {
 			echo '<p class="fv-erh-collision-allclear">'

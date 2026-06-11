@@ -4,8 +4,8 @@
  *
  * Runs only when the user deletes the plugin from the Plugins screen. Removes
  * every persistent artifact the plugin created — its two tables, its options,
- * its transients, and its scheduled cron event — so a fresh install starts clean
- * and a deletion leaves no orphans.
+ * its transients, and its scheduled cron events — so a fresh install starts
+ * clean and a deletion leaves no orphans.
  *
  * It deliberately does NOT touch the official Ecwid Shopping Cart plugin's
  * `ecwid_store_id` / `ecwid_public_token` options: the helper only ever reads
@@ -57,8 +57,11 @@ function fv_erh_uninstall_site() {
 	);
 	// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
-	// 4. Unschedule the hourly verdict/collision task.
+	// 4. Unschedule the hourly verdict/collision task and any pending one-off
+	// collision scan. Deactivation clears both too, but a WP-CLI uninstall can
+	// run without the deactivation hook ever firing.
 	wp_clear_scheduled_hook( 'fv_erh_hourly_tasks' );
+	wp_clear_scheduled_hook( 'fv_erh_collision_scan' );
 }
 
 /**

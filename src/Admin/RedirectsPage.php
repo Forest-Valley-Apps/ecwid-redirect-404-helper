@@ -11,6 +11,7 @@ namespace FV\WPEcwidRedirectHelper\Admin;
 
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
 use FV\WPEcwidRedirectHelper\Redirect\RedirectStore;
+use FV\WPEcwidRedirectHelper\Request\RequestPath;
 use FV\WPEcwidRedirectHelper\Upsell\DeepLink;
 use FV\WPEcwidRedirectHelper\Upsell\UpgradeCta;
 use FV\WPEcwidRedirectHelper\Url\RuleMatcher;
@@ -132,10 +133,13 @@ final class RedirectsPage {
 	public function handle_add(): void {
 		$this->guard( self::ACTION_ADD );
 
-		// phpcs:disable WordPress.Security.NonceVerification.Missing -- verified in guard() right above.
-		$source      = isset( $_POST['fv_source'] ) ? sanitize_text_field( wp_unslash( $_POST['fv_source'] ) ) : '';
-		$destination = isset( $_POST['fv_destination'] ) ? sanitize_text_field( wp_unslash( $_POST['fv_destination'] ) ) : '';
-		// phpcs:enable WordPress.Security.NonceVerification.Missing
+		// Percent-decoded like the request paths these rules must match
+		// ({@see RequestPath::decode()}) — sanitize_text_field() would delete
+		// every `%xx` octet, corrupting any non-ASCII source before storage.
+		// phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- nonce verified in guard() right above; inputs are percent-decoded with control characters rejected, then validated by RedirectStore::add().
+		$source      = isset( $_POST['fv_source'] ) ? RequestPath::decode( (string) wp_unslash( $_POST['fv_source'] ) ) : '';
+		$destination = isset( $_POST['fv_destination'] ) ? RequestPath::decode( (string) wp_unslash( $_POST['fv_destination'] ) ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 		$result = $this->store->add( $source, $destination );
 

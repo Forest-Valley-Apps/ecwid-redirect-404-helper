@@ -9,13 +9,15 @@ declare( strict_types=1 );
 
 namespace FV\WPEcwidRedirectHelper\Tests\Unit\Collision;
 
+use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 use FV\WPEcwidRedirectHelper\Collision\CollisionScanner;
 use FV\WPEcwidRedirectHelper\Tests\Unit\WpdbTestCase;
+use Mockery;
 
 /**
- * Covers the slug pattern, the scan query, caching, invalidation, and the
- * fingerprinted dismissal.
+ * Covers the slug pattern, the scan query, caching, invalidation, the
+ * deferred background scan, and the fingerprinted dismissal.
  */
 final class CollisionScannerTest extends WpdbTestCase {
 
@@ -144,6 +146,65 @@ final class CollisionScannerTest extends WpdbTestCase {
 		$this->wpdb->shouldReceive( 'get_results' )->once()->andReturn( array() );
 
 		$this->assertSame( array(), $this->scanner()->get_collisions( true ) );
+	}
+
+	public function test_register_wires_the_invalidation_and_deferred_scan_hooks(): void {
+		Actions\expectAdded( 'save_post' )->once();
+		Actions\expectAdded( CollisionScanner::SCAN_EVENT )->once();
+
+		$this->scanner()->register();
+	}
+
+	public function test_schedule_scan_queues_a_single_event(): void {
+		Functions\expect( 'wp_next_scheduled' )
+			->once()
+			->with( CollisionScanner::SCAN_EVENT )
+			->andReturn( false );
+		Functions\expect( 'wp_schedule_single_event' )
+			->once()
+			->with( Mockery::type( 'int' ), CollisionScanner::SCAN_EVENT );
+
+		$this->scanner()->schedule_scan();
+	}
+
+	public function test_schedule_scan_never_double_schedules(): void {
+		Functions\expect( 'wp_next_scheduled' )
+			->once()
+			->with( CollisionScanner::SCAN_EVENT )
+			->andReturn( time() + 10 );
+		Functions\expect( 'wp_schedule_single_event' )->never();
+
+		$this->scanner()->schedule_scan();
+	}
+
+	public function test_run_scheduled_scan_refreshes_a_cold_cache(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'set_transient' )->justReturn( true );
+
+		$this->wpdb->shouldReceive( 'get_results' )->once()->andReturn( array() );
+
+		$this->scanner()->run_scheduled_scan();
+
+		$this->assertCount( 1, $this->prepared, 'a cold cache must run the scan query' );
+	}
+
+	public function test_run_scheduled_scan_is_a_noop_on_a_warm_cache(): void {
+		// An empty array is a valid warm result ("no collisions").
+		Functions\when( 'get_transient' )->justReturn( array() );
+
+		$this->wpdb->shouldReceive( 'get_results' )->never();
+
+		$this->scanner()->run_scheduled_scan();
+
+		$this->assertCount( 0, $this->prepared );
+	}
+
+	public function test_unschedule_scan_clears_the_pending_event(): void {
+		Functions\expect( 'wp_clear_scheduled_hook' )
+			->once()
+			->with( CollisionScanner::SCAN_EVENT );
+
+		CollisionScanner::unschedule_scan();
 	}
 
 	public function test_cached_collisions_never_scans(): void {

@@ -11,6 +11,7 @@ namespace FV\WPEcwidRedirectHelper\Capture;
 
 use FV\WPEcwidRedirectHelper\Api\BackendClient;
 use FV\WPEcwidRedirectHelper\Connection\ConnectionState;
+use FV\WPEcwidRedirectHelper\Connection\EcwidPluginDiscovery;
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
 use FV\WPEcwidRedirectHelper\Request\RequestPath;
 use FV\WPEcwidRedirectHelper\Url\RuleMatcher;
@@ -34,8 +35,11 @@ defined( 'ABSPATH' ) || exit;
  *
  * Ecwid-classified 404s are additionally reported to the hosted backend, but
  * only while the merchant is connected — clicking Connect is the explicit
- * opt-in to the hosted service, whose dashboard these reports feed. WP-page
- * 404s are never reported; they stay local.
+ * opt-in to the hosted service, whose dashboard these reports feed. Reports
+ * carry the store id discovered live from the Ecwid plugin (the same id the
+ * verdict feature resolves), not the Connect-time snapshot, so re-pointing
+ * the Ecwid plugin never reports the new store's 404s against the old one.
+ * WP-page 404s are never reported; they stay local.
  *
  * Hooked at priority 20 so any redirect feature running at default priority
  * (which exits before rendering) wins without ever logging a false 404.
@@ -123,8 +127,16 @@ final class NotFoundCapture {
 			return;
 		}
 
+		// Report against the live store id from the Ecwid plugin, not the
+		// Connect-time snapshot, so this stays in lockstep with the verdict
+		// feature when the merchant re-points the Ecwid plugin.
+		$discovery = EcwidPluginDiscovery::discover();
+		if ( ! $discovery->has_store_id() ) {
+			return;
+		}
+
 		// Fire-and-forget (non-blocking, 1s timeout) — never delays the render.
-		BackendClient::for_store( $this->state->store_id() )
+		BackendClient::for_store( $discovery->store_id() )
 			->report_404( $path, '' !== $referrer ? $referrer : null );
 	}
 }

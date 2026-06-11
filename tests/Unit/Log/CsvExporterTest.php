@@ -93,6 +93,12 @@ final class CsvExporterTest extends TestCase {
 					'url_path' => '+1234567890',
 					'referrer' => '-2+3',
 				),
+				array(
+					// Leading whitespace triggers: Excel also evaluates a
+					// formula hidden behind a tab or carriage return.
+					'url_path' => "\t=2+5",
+					'referrer' => "\r@cmd",
+				),
 			)
 		);
 
@@ -102,6 +108,8 @@ final class CsvExporterTest extends TestCase {
 		$this->assertSame( "'@SUM(1+1)", $parsed[0]['referrer'] );
 		$this->assertSame( "'+1234567890", $parsed[1]['url_path'] );
 		$this->assertSame( "'-2+3", $parsed[1]['referrer'] );
+		$this->assertSame( "'\t=2+5", $parsed[2]['url_path'] );
+		$this->assertSame( "'\r@cmd", $parsed[2]['referrer'] );
 	}
 
 	public function test_missing_keys_become_empty_fields_and_order_is_stable(): void {

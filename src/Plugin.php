@@ -34,7 +34,7 @@ final class Plugin {
 	 *
 	 * @var string
 	 */
-	public const VERSION = '0.1.0';
+	public const VERSION = '1.0.0';
 
 	/**
 	 * Shared singleton instance.
@@ -71,9 +71,10 @@ final class Plugin {
 		// are neither admin nor ordinary front-end.
 		( new Tasks() )->register();
 
-		// Slug saves happen via wp-admin AND the REST API (Gutenberg), so the
-		// collision-cache invalidation hook is registered unconditionally too.
-		add_action( 'save_post', array( new CollisionScanner(), 'maybe_invalidate' ), 10, 2 );
+		// The collision hooks are unconditional too: slug saves happen via
+		// wp-admin AND the REST API (Gutenberg), and the deferred-scan event
+		// fires on cron requests.
+		( new CollisionScanner() )->register();
 
 		if ( is_admin() ) {
 			// Covers plugin updates, which do not fire the activation hook.
@@ -106,11 +107,12 @@ final class Plugin {
 	}
 
 	/**
-	 * Deactivation callback: remove the scheduled cron event.
+	 * Deactivation callback: remove the scheduled cron events.
 	 *
 	 * @return void
 	 */
 	public static function deactivate(): void {
 		Tasks::unschedule();
+		CollisionScanner::unschedule_scan();
 	}
 }

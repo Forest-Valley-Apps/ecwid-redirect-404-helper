@@ -48,7 +48,8 @@ final class RedirectStore {
 	public const INVALID_SOURCE = 'invalid-source';
 
 	/**
-	 * Add result: the destination is unusable (or equals the source).
+	 * Add result: the destination is unusable (equals the source, or would
+	 * create a redirect loop/chain — {@see self::creates_loop()}).
 	 *
 	 * @var string
 	 */
@@ -111,6 +112,10 @@ final class RedirectStore {
 
 		if ( null !== $this->find_by_source( $source ) ) {
 			return self::DUPLICATE;
+		}
+
+		if ( $this->creates_loop( $source, $destination ) ) {
+			return self::INVALID_DESTINATION;
 		}
 
 		$wpdb->insert(
@@ -262,6 +267,174 @@ final class RedirectStore {
 		);
 
 		return is_array( $row ) ? $row : null;
+	}
+
+	/**
+	 * Whether a new rule would create a redirect loop.
+	 *
+	 * The save-time half of the loop protection (the parent product validates
+	 * the same way in `packages/shared/src/validation.ts`; the Redirector
+	 * keeps a runtime backstop for rows that predate this check). The new
+	 * rule's destination is resolved to the path a served redirect would
+	 * actually land on and probed through the real matcher, rejecting:
+	 *
+	 * - self-scope chains: the destination falls back inside the rule's own
+	 *   source scope (`/docs/*` → `/docs/v2/*` ⇒ `/docs/v2/v2/…` unbounded;
+	 *   `/old/*` → `/old/landing` ⇒ self-301 when the landing itself 404s);
+	 * - one-hop cycles: an existing active rule sends the destination straight
+	 *   back to the new source (`/a` → `/b` exists, adding `/b` → `/a`), or
+	 *   back into the new rule's scope;
+	 * - transitive cycles spanning any number of rules (`/a` → `/b`, `/b` →
+	 *   `/c`, adding `/c` → `/a`), via {@see RedirectStore::chain_revisits()} —
+	 *   the full source→destination chain walk the parent's `detectLoop()` does.
+	 *
+	 * Genuine chains into a *different* rule (`/c` → `/a` while `/a` → `/b`
+	 * exists, with no return edge) are allowed, as in the parent (its
+	 * `detectChain()` only warns).
+	 *
+	 * @param string $source      Normalized source pattern.
+	 * @param string $destination Validated destination.
+	 * @return bool
+	 */
+	private function creates_loop( string $source, string $destination ): bool {
+		if ( '/' !== substr( $destination, 0, 1 ) ) {
+			// Absolute http(s) destination — external, cannot re-enter the matcher.
+			return false;
+		}
+
+		$probe       = $this->served_path( $destination );
+		$self_lookup = $this->matcher->build_lookup(
+			array(
+				( false !== strpos( $source, '*' ) ? 'wildcard' : 'exact' ) => array(
+					array(
+						'source'      => $source,
+						'destination' => $destination,
+					),
+				),
+			)
+		);
+
+		if ( null !== $this->matcher->match_path( $probe, $self_lookup ) ) {
+			return true;
+		}
+
+		// One read of the active set, shared by the transitive walk and the
+		// one-hop probe (kept after the self-scope check so that stays DB-free).
+		$config = $this->lookup_config();
+
+		// Transitive cycle across any number of rules, ported from the parent's
+		// detectLoop() (validation.ts): walk the exact source→destination graph
+		// — hash-folded so `#!/foo` and `/foo` are one node — from the new
+		// destination with the new edge added. The matcher-scope checks around
+		// this only see a single hop; this catches `/a` → `/b`, `/b` → `/c`,
+		// then adding `/c` → `/a`.
+		if ( $this->chain_revisits( $source, $destination, $config ) ) {
+			return true;
+		}
+
+		$existing = $this->matcher->match_path( $probe, $this->matcher->build_lookup( $config ) );
+		if ( null === $existing
+			|| ! is_string( $existing['destination'] )
+			|| '/' !== substr( $existing['destination'], 0, 1 ) ) {
+			return false;
+		}
+
+		$resolved = $this->served_path( $existing['destination'] );
+
+		return $this->matcher->normalize_path( $resolved ) === $source
+			|| null !== $this->matcher->match_path( $resolved, $self_lookup );
+	}
+
+	/**
+	 * Whether following the exact source→destination chain from the new rule's
+	 * destination revisits an already-seen node — a redirect loop spanning any
+	 * number of rules. A faithful port of the parent's `detectLoop()`
+	 * (`packages/shared/src/validation.ts`): sources and destinations are
+	 * compared in hash-folded normalized form, the new edge is added to the
+	 * graph, and the walk from the new destination is bounded by the rule count
+	 * (≤ 50) so a pre-existing cycle cannot spin forever.
+	 *
+	 * This is an exact-string graph, so it does not reason about wildcard
+	 * *scope* (the matcher-based checks in {@see RedirectStore::creates_loop()}
+	 * cover that); the two together match the parent's behavior.
+	 *
+	 * @param string $source      Normalized source pattern.
+	 * @param string $destination Validated destination.
+	 * @param array{exact:array<int,array>,wildcard:array<int,array>} $config The
+	 *              active rule set from {@see RedirectStore::lookup_config()}.
+	 * @return bool
+	 */
+	private function chain_revisits( string $source, string $destination, array $config ): bool {
+		$map = array();
+		foreach ( $config as $rules ) {
+			foreach ( $rules as $rule ) {
+				$map[ $this->normalize_for_compare( (string) $rule['source'] ) ] =
+					$this->normalize_for_compare( (string) $rule['destination'] );
+			}
+		}
+
+		$start         = $this->normalize_for_compare( $source );
+		$map[ $start ] = $this->normalize_for_compare( $destination );
+
+		$current   = $map[ $start ];
+		$visited   = array( $start => true );
+		$max_depth = min( 50, count( $map ) + 1 );
+
+		for ( $i = 0; $i < $max_depth; $i++ ) {
+			if ( isset( $visited[ $current ] ) ) {
+				return true;
+			}
+			$visited[ $current ] = true;
+
+			if ( ! isset( $map[ $current ] ) ) {
+				return false;
+			}
+			$current = $map[ $current ];
+		}
+
+		return false;
+	}
+
+	/**
+	 * Normalize a path for loop-graph comparison: the matcher's normalization
+	 * (lowercase, query/fragment stripped, trailing slash trimmed) plus the
+	 * parent's hash-fold — `#!/foo` and `/foo` are the same logical page, so the
+	 * cross-format storefront matcher means loop detection must treat them as
+	 * one node too (`normalizeForCompare` in the parent's validation.ts).
+	 *
+	 * @param string $path A source or destination.
+	 * @return string
+	 */
+	private function normalize_for_compare( string $path ): string {
+		$normalized = $this->matcher->normalize_path( $path );
+
+		if ( 0 === strpos( $normalized, '#!/' ) ) {
+			return '/' . substr( $normalized, 3 );
+		}
+
+		if ( 0 === strpos( $normalized, '#/' ) ) {
+			return '/' . substr( $normalized, 2 );
+		}
+
+		return $normalized;
+	}
+
+	/**
+	 * The path a destination actually serves as: any trailing `*` resolved
+	 * away and the matcher's doubled-slash substitution quirk collapsed,
+	 * mirroring what the Redirector does before issuing the 301 — so the loop
+	 * check probes the same string a browser would come back with.
+	 *
+	 * @param string $destination A site-relative destination (may carry a `*`).
+	 * @return string
+	 */
+	private function served_path( string $destination ): string {
+		$star_idx = strrpos( $destination, '*' );
+		if ( false !== $star_idx ) {
+			$destination = substr( $destination, 0, $star_idx );
+		}
+
+		return (string) preg_replace( '#(?<!:)//+#', '/', $destination );
 	}
 
 	/**

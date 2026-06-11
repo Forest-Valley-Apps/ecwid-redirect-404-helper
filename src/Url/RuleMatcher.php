@@ -103,6 +103,15 @@ final class RuleMatcher {
 	 * Order: exact on the normalized path, exact on the cross-format alt path,
 	 * wildcard on the normalized path, then wildcard on the alt path.
 	 *
+	 * Deliberate non-port: when a hash path (`#!/…`) matches a wildcard, the
+	 * parent's `processRules()` (redirect.js) re-prepends `#!/` to a
+	 * slash-rooted destination so the browser keeps hash-based navigation —
+	 * the "hash-prefix loss" fix in the storefront gotchas reference. That
+	 * step is client-side navigation repair and is out of scope server-side:
+	 * the WP layer never serves a request for a hash route, so callers here
+	 * receive the destination un-restored, with the `#!` left in `base_path`
+	 * (pinned in RuleMatcherTest).
+	 *
 	 * @param string $path   Request path or hash route.
 	 * @param array  $lookup A structure returned by {@see RuleMatcher::build_lookup()}.
 	 * @return array|null The match result array, or null when nothing matches.
@@ -248,7 +257,9 @@ final class RuleMatcher {
 	 * (except root), and preserve hash-route prefixes (`#!/` or `#/`).
 	 *
 	 * Paths are compared in their (percent-)decoded form; this method does not
-	 * encode or decode.
+	 * encode or decode — the decode happens at the seams that feed it
+	 * ({@see \FV\WPEcwidRedirectHelper\Request\RequestPath::decode()}: request
+	 * extraction and the redirects admin form).
 	 *
 	 * @param string $path The raw path.
 	 * @return string The normalized path.
@@ -287,7 +298,12 @@ final class RuleMatcher {
 			$normalized = substr( $normalized, 0, $len - 1 );
 		}
 
-		return strtolower( $normalized );
+		// Unicode-aware like the parent's toLowerCase(): plain strtolower()
+		// would leave `/Крутой-Товар-p123` unmatched against its lowercase
+		// rule. mbstring is not guaranteed on every host, hence the guard.
+		return function_exists( 'mb_strtolower' )
+			? mb_strtolower( $normalized, 'UTF-8' )
+			: strtolower( $normalized );
 	}
 
 	/**

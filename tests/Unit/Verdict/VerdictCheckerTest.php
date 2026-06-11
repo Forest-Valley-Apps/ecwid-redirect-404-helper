@@ -35,10 +35,18 @@ final class VerdictCheckerTest extends WpdbTestCase {
 	 */
 	private int $deleted_endpoint_calls = 0;
 
+	/**
+	 * HTTP GETs to the batched product-existence endpoint this test observed.
+	 *
+	 * @var int
+	 */
+	private int $product_batch_calls = 0;
+
 	protected function setUp(): void {
 		parent::setUp();
 
 		$this->deleted_endpoint_calls = 0;
+		$this->product_batch_calls    = 0;
 
 		Functions\when( 'untrailingslashit' )->alias(
 			static function ( $value ) {
@@ -71,10 +79,11 @@ final class VerdictCheckerTest extends WpdbTestCase {
 	 * @return VerdictChecker
 	 */
 	private function checker( array $catalog_status, $deleted_response ): VerdictChecker {
-		$calls = &$this->deleted_endpoint_calls;
+		$calls       = &$this->deleted_endpoint_calls;
+		$batch_calls = &$this->product_batch_calls;
 
 		Functions\when( 'wp_remote_get' )->alias(
-			static function ( $url ) use ( $catalog_status, $deleted_response, &$calls ) {
+			static function ( $url ) use ( $catalog_status, $deleted_response, &$calls, &$batch_calls ) {
 				if ( false !== strpos( $url, '/api/storefront/deleted/' ) ) {
 					++$calls;
 
@@ -98,8 +107,31 @@ final class VerdictCheckerTest extends WpdbTestCase {
 					);
 				}
 
-				// Catalog entity lookup URLs end in /products/<id>?... or /categories/<id>?...
-				if ( preg_match( '~/(?:products|categories)/(\d+)\?~', $url, $m ) ) {
+				// The batched product lookup: /products?productId=1,2&responseFields=items(id).
+				// An 'unknown' id simulates an indeterminate request, which fails
+				// the whole batch — there is no per-id UNKNOWN on this endpoint.
+				if ( preg_match( '~/products\?productId=([0-9,]+)~', $url, $m ) ) {
+					++$batch_calls;
+
+					$items = array();
+					foreach ( array_map( 'intval', explode( ',', $m[1] ) ) as $id ) {
+						$status = $catalog_status[ $id ] ?? 'unknown';
+						if ( 'unknown' === $status ) {
+							return array( 'code' => 500 );
+						}
+						if ( 'exists' === $status ) {
+							$items[] = array( 'id' => $id );
+						}
+					}
+
+					return array(
+						'code' => 200,
+						'body' => json_encode( array( 'items' => $items ) ),
+					);
+				}
+
+				// Category entity lookup URLs end in /categories/<id>?...
+				if ( preg_match( '~/categories/(\d+)\?~', $url, $m ) ) {
 					$status = $catalog_status[ (int) $m[1] ] ?? 'unknown';
 					$code   = array(
 						'exists'    => 200,
@@ -321,6 +353,76 @@ final class VerdictCheckerTest extends WpdbTestCase {
 
 		$this->assertSame( 2, $result['checked'] );
 		$this->assertSame( 1, $this->deleted_endpoint_calls );
+	}
+
+	public function test_products_are_resolved_in_one_batched_catalog_request(): void {
+		$this->stub_log_reads(
+			array(
+				array(
+					'classification' => 'product',
+					'entity_id'      => 1,
+				),
+				array(
+					'classification' => 'product',
+					'entity_id'      => 2,
+				),
+				array(
+					'classification' => 'product',
+					'entity_id'      => 3,
+				),
+			)
+		);
+		$this->expect_verdict_write( 'product', 1, VerdictChecker::VERDICT_IN_CATALOG );
+		$this->expect_verdict_write( 'product', 2, VerdictChecker::VERDICT_IN_CATALOG );
+		$this->expect_verdict_write( 'product', 3, VerdictChecker::VERDICT_DELETED );
+
+		$checker = $this->checker(
+			array(
+				1 => 'exists',
+				2 => 'exists',
+				3 => 'not-found',
+			),
+			array(
+				'products'   => array( 3 ),
+				'categories' => array(),
+			)
+		);
+
+		$this->assertSame( 3, $checker->run()['checked'] );
+		// Three products, one catalog round-trip.
+		$this->assertSame( 1, $this->product_batch_calls );
+	}
+
+	public function test_exhausted_time_budget_stops_between_entities(): void {
+		$this->stub_log_reads(
+			array(
+				array(
+					'classification' => 'product',
+					'entity_id'      => 1,
+				),
+				array(
+					'classification' => 'product',
+					'entity_id'      => 2,
+				),
+			),
+			1
+		);
+		// Only the first entity is attempted: progress is guaranteed, then the
+		// (already expired) zero budget breaks the loop before the second.
+		$this->expect_verdict_write( 'product', 1, VerdictChecker::VERDICT_IN_CATALOG );
+
+		$checker = $this->checker(
+			array(
+				1 => 'exists',
+				2 => 'exists',
+			),
+			array()
+		);
+
+		$result = $checker->run( 25, 0.0 );
+
+		$this->assertSame( 1, $result['checked'] );
+		$this->assertSame( 1, $result['remaining'] );
 	}
 
 	public function test_empty_batch_short_circuits(): void {

@@ -16,7 +16,8 @@ use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Covers rules parsing/caching and the fire-and-forget report calls.
+ * Covers rules parsing/caching, the deleted-entities and app-status
+ * tri-states, and the fire-and-forget report calls.
  */
 final class BackendClientTest extends TestCase {
 
@@ -412,6 +413,167 @@ final class BackendClientTest extends TestCase {
 			->with( 'fv_erh_deleted_' . self::STORE_ID );
 
 		$this->client()->clear_deleted_cache();
+	}
+
+	public function test_get_app_installed_parses_true_and_caches_wrapped_array(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+
+		$json = wp_json_encode_stub(
+			array(
+				'v'         => 1,
+				'installed' => true,
+			)
+		);
+
+		Functions\expect( 'wp_remote_get' )
+			->once()
+			->with(
+				'https://redirect-manager-dev.up.railway.app/api/storefront/app-status/' . self::STORE_ID,
+				\Mockery::type( 'array' )
+			)
+			->andReturn( $this->rules_response( $json ) );
+
+		// The flag is cached wrapped in an array, so a cached definite `false`
+		// stays distinguishable from get_transient()'s missing-key `false`.
+		Functions\expect( 'set_transient' )
+			->once()
+			->with( 'fv_erh_app_status_' . self::STORE_ID, array( 'installed' => true ), 3600 );
+
+		$this->assertTrue( $this->client()->get_app_installed() );
+	}
+
+	public function test_get_app_installed_parses_false_and_still_caches_wrapped_array(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+
+		$json = wp_json_encode_stub(
+			array(
+				'v'         => 1,
+				'installed' => false,
+			)
+		);
+		Functions\when( 'wp_remote_get' )->justReturn( $this->rules_response( $json ) );
+
+		// "Definitely not installed" is a real answer worth caching too.
+		Functions\expect( 'set_transient' )
+			->once()
+			->with( 'fv_erh_app_status_' . self::STORE_ID, array( 'installed' => false ), 3600 );
+
+		$this->assertFalse( $this->client()->get_app_installed() );
+	}
+
+	public function test_get_app_installed_returns_cached_value_without_http(): void {
+		// A cached wrapped `false` must short-circuit the fetch — the tri-state
+		// read may not mistake it for "nothing cached".
+		Functions\when( 'get_transient' )->justReturn( array( 'installed' => false ) );
+
+		Functions\expect( 'wp_remote_get' )->never();
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertFalse( $this->client()->get_app_installed() );
+	}
+
+	public function test_get_app_installed_force_refresh_bypasses_cache(): void {
+		Functions\expect( 'get_transient' )->never();
+		Functions\when( 'set_transient' )->justReturn( true );
+
+		$json = wp_json_encode_stub(
+			array(
+				'v'         => 1,
+				'installed' => true,
+			)
+		);
+		Functions\expect( 'wp_remote_get' )->once()->andReturn( $this->rules_response( $json ) );
+
+		$this->assertTrue( $this->client()->get_app_installed( true ) );
+	}
+
+	public function test_get_app_installed_null_and_uncached_on_route_absent_404(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		// Until the prod promotion (S9 gate) the route 404s on the shipped
+		// default base URL: that must stay indeterminate — never a cached
+		// "false" that would stick for an hour after the endpoint goes live.
+		Functions\when( 'wp_remote_get' )->justReturn(
+			array(
+				'code' => 404,
+				'body' => wp_json_encode_stub(
+					array(
+						'message'    => 'Route GET:/api/storefront/app-status/130416012 not found',
+						'error'      => 'Not Found',
+						'statusCode' => 404,
+					)
+				),
+			)
+		);
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_app_installed() );
+	}
+
+	public function test_get_app_installed_null_on_unexpected_status(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'wp_remote_get' )->justReturn(
+			array(
+				'code' => 503,
+				'body' => 'service unavailable',
+			)
+		);
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_app_installed() );
+	}
+
+	public function test_get_app_installed_null_and_uncached_on_wp_error(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'is_wp_error' )->justReturn( true );
+		Functions\when( 'wp_remote_get' )->justReturn( 'an-error' );
+
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_app_installed() );
+	}
+
+	public function test_get_app_installed_null_on_malformed_json(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'wp_remote_get' )->justReturn( $this->rules_response( '{not-json' ) );
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_app_installed() );
+	}
+
+	public function test_get_app_installed_null_on_missing_installed_key(): void {
+		Functions\when( 'get_transient' )->justReturn( false );
+		Functions\when( 'wp_remote_get' )->justReturn(
+			$this->rules_response( wp_json_encode_stub( array( 'v' => 1 ) ) )
+		);
+		Functions\expect( 'set_transient' )->never();
+
+		$this->assertNull( $this->client()->get_app_installed() );
+	}
+
+	public function test_peek_app_installed_null_on_bare_false_transient(): void {
+		// get_transient() returns a bare `false` for a missing key — that means
+		// "nothing cached" (null), never "definitely not installed".
+		Functions\when( 'get_transient' )->justReturn( false );
+
+		$this->assertNull( $this->client()->peek_app_installed() );
+	}
+
+	public function test_peek_app_installed_false_for_wrapped_false(): void {
+		Functions\when( 'get_transient' )->justReturn( array( 'installed' => false ) );
+
+		$this->assertFalse( $this->client()->peek_app_installed() );
+	}
+
+	public function test_peek_app_installed_true_for_wrapped_true(): void {
+		Functions\when( 'get_transient' )->justReturn( array( 'installed' => true ) );
+
+		$this->assertTrue( $this->client()->peek_app_installed() );
+	}
+
+	public function test_peek_app_installed_null_on_unwrapped_junk(): void {
+		Functions\when( 'get_transient' )->justReturn( 'yes' );
+
+		$this->assertNull( $this->client()->peek_app_installed() );
 	}
 
 	public function test_report_404_posts_non_blocking_with_referrer(): void {

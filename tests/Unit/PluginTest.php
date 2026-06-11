@@ -40,7 +40,7 @@ final class PluginTest extends TestCase {
 	}
 
 	public function test_version_constant_matches_header(): void {
-		$this->assertSame( '0.1.0', Plugin::VERSION );
+		$this->assertSame( '1.0.0', Plugin::VERSION );
 	}
 
 	public function test_register_wires_admin_pages_in_admin(): void {
@@ -63,6 +63,7 @@ final class PluginTest extends TestCase {
 		Actions\expectAdded( 'admin_notices' )->once();
 		Actions\expectAdded( 'fv_erh_hourly_tasks' )->once();
 		Actions\expectAdded( 'save_post' )->once();
+		Actions\expectAdded( 'fv_erh_collision_scan' )->once();
 		Actions\expectAdded( 'template_redirect' )->never();
 
 		Plugin::instance()->register();
@@ -76,8 +77,11 @@ final class PluginTest extends TestCase {
 		Actions\expectAdded( 'admin_post_fv_erh_refresh' )->never();
 		Actions\expectAdded( 'admin_post_fv_erh_disconnect' )->never();
 		Actions\expectAdded( 'admin_notices' )->never();
-		// The cron callback must exist on every request type.
+		// The cron callbacks and the collision hooks must exist on every
+		// request type.
 		Actions\expectAdded( 'fv_erh_hourly_tasks' )->once();
+		Actions\expectAdded( 'save_post' )->once();
+		Actions\expectAdded( 'fv_erh_collision_scan' )->once();
 		// Once for the manual-301 redirector, once for the 404 capture.
 		Actions\expectAdded( 'template_redirect' )->twice();
 
@@ -105,10 +109,13 @@ final class PluginTest extends TestCase {
 		unset( $GLOBALS['wpdb'] );
 	}
 
-	public function test_deactivate_clears_the_cron_event(): void {
+	public function test_deactivate_clears_the_cron_events(): void {
 		Functions\expect( 'wp_clear_scheduled_hook' )
 			->once()
 			->with( 'fv_erh_hourly_tasks' );
+		Functions\expect( 'wp_clear_scheduled_hook' )
+			->once()
+			->with( 'fv_erh_collision_scan' );
 
 		Plugin::deactivate();
 	}

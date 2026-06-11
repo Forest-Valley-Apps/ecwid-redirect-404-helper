@@ -24,16 +24,16 @@ final class NotFoundCaptureTest extends WpdbTestCase {
 	private const STORE_ID = 130416012;
 
 	/**
-	 * The connection-state option value served to ConnectionState.
+	 * The WordPress options served to get_option(), keyed by option name.
 	 *
 	 * @var array<string,mixed>
 	 */
-	private array $connection_option = array();
+	private array $options = array();
 
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->connection_option = array();
+		$this->options = array();
 
 		// Duplicate-key update by default: no prune path in these tests.
 		$this->wpdb->shouldReceive( 'query' )->andReturn( 2 )->byDefault();
@@ -59,7 +59,7 @@ final class NotFoundCaptureTest extends WpdbTestCase {
 		);
 		Functions\when( 'get_option' )->alias(
 			function ( $name, $default_value = false ) {
-				return 'fv_erh_connection' === $name ? $this->connection_option : $default_value;
+				return $this->options[ $name ] ?? $default_value;
 			}
 		);
 	}
@@ -69,11 +69,20 @@ final class NotFoundCaptureTest extends WpdbTestCase {
 		parent::tearDown();
 	}
 
-	private function connect(): void {
-		$this->connection_option = array(
+	/**
+	 * Mark the merchant as connected and configure the live Ecwid store id.
+	 *
+	 * The connection snapshot always freezes STORE_ID; the live id the Ecwid
+	 * plugin currently points at is configurable to exercise drift.
+	 *
+	 * @param int $live_store_id The discovered `ecwid_store_id` option value.
+	 */
+	private function connect( int $live_store_id = self::STORE_ID ): void {
+		$this->options['fv_erh_connection'] = array(
 			'connected' => true,
 			'store_id'  => self::STORE_ID,
 		);
+		$this->options['ecwid_store_id']    = (string) $live_store_id;
 	}
 
 	public function test_register_adds_late_template_redirect_hook(): void {
@@ -168,6 +177,47 @@ final class NotFoundCaptureTest extends WpdbTestCase {
 		$this->assertSame( '/store/summer-c45', $args[1] );
 		$this->assertSame( 'category', $args[3] );
 		$this->assertSame( 45, $args[4] );
+	}
+
+	public function test_report_targets_the_live_store_id_not_the_connect_snapshot(): void {
+		Functions\when( 'is_404' )->justReturn( true );
+		$_SERVER['REQUEST_URI'] = '/store/old-shirt-p123';
+		// The Ecwid plugin was re-pointed after Connect: the live id differs
+		// from the frozen snapshot, and the report must follow the live id.
+		$this->connect( 999888777 );
+
+		$captured = array();
+		Functions\expect( 'wp_remote_post' )
+			->once()
+			->andReturnUsing(
+				static function ( $url, $request_args ) use ( &$captured ) {
+					$captured['args'] = $request_args;
+
+					return array();
+				}
+			);
+
+		( new NotFoundCapture() )->maybe_record();
+
+		$body = json_decode( $captured['args']['body'], true );
+		$this->assertSame( 999888777, $body['storeId'] );
+	}
+
+	public function test_connected_404_is_not_reported_without_a_discovered_store_id(): void {
+		Functions\when( 'is_404' )->justReturn( true );
+		$_SERVER['REQUEST_URI'] = '/store/old-shirt-p123';
+		// Connected, but the Ecwid plugin no longer has a store configured.
+		$this->connect();
+		unset( $this->options['ecwid_store_id'] );
+
+		Functions\expect( 'wp_remote_post' )->never();
+
+		( new NotFoundCapture() )->maybe_record();
+
+		// Still logged locally.
+		$args = $this->prepared[0]['args'];
+		$this->assertSame( '/store/old-shirt-p123', $args[1] );
+		$this->assertSame( 'product', $args[3] );
 	}
 
 	public function test_host_smuggling_request_uri_is_reduced_to_its_path(): void {

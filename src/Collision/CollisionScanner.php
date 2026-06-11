@@ -22,9 +22,10 @@ defined( 'ABSPATH' ) || exit;
  * counterpart that warns before visitors hit them.
  *
  * The scan is one REGEXP query over published public content, cached in a
- * transient and never run on ordinary admin loads: it refreshes when the
- * dashboard panel renders on a cold cache, on demand (Rescan), via cron, and
- * is invalidated by relevant `save_post` events.
+ * transient and never run inline on admin loads: a dashboard render on a cold
+ * cache schedules a one-off background scan ({@see self::SCAN_EVENT}) instead
+ * of paying for the unindexable query mid-render; it refreshes on demand
+ * (Rescan), via cron, and is invalidated by relevant `save_post` events.
  *
  * Dismissal of the companion admin notice is keyed to a fingerprint of the
  * colliding post ids, so a *new* collision resurfaces the notice after an old
@@ -48,6 +49,13 @@ final class CollisionScanner {
 	 * @var string
 	 */
 	public const DISMISSED_OPTION = 'fv_erh_collision_dismissed';
+
+	/**
+	 * One-off cron event for a deferred background scan.
+	 *
+	 * @var string
+	 */
+	public const SCAN_EVENT = 'fv_erh_collision_scan';
 
 	/**
 	 * How long, in seconds, a scan result is cached.
@@ -78,6 +86,59 @@ final class CollisionScanner {
 	 * @var string
 	 */
 	private const SQL_PATTERN = '-(p|c)[0-9]+$';
+
+	/**
+	 * Register the scanner's hooks.
+	 *
+	 * Both must exist on every request type — slug saves happen via wp-admin
+	 * AND the REST API (Gutenberg), and the deferred-scan event fires on cron
+	 * requests — so {@see \FV\WPEcwidRedirectHelper\Plugin::register()} calls
+	 * this unconditionally.
+	 *
+	 * @return void
+	 */
+	public function register(): void {
+		add_action( 'save_post', array( $this, 'maybe_invalidate' ), 10, 2 );
+		add_action( self::SCAN_EVENT, array( $this, 'run_scheduled_scan' ) );
+	}
+
+	/**
+	 * Queue a one-off background scan unless one is already pending.
+	 *
+	 * For render paths that find a cold cache: they show "scan pending"
+	 * instead of paying for the REGEXP query inline, and WP-Cron does the
+	 * actual work moments later.
+	 *
+	 * @return void
+	 */
+	public function schedule_scan(): void {
+		if ( false === wp_next_scheduled( self::SCAN_EVENT ) ) {
+			wp_schedule_single_event( time(), self::SCAN_EVENT );
+		}
+	}
+
+	/**
+	 * The deferred-scan event callback: refresh the cache when still cold.
+	 *
+	 * A warm cache (an explicit Rescan or the hourly cron got there first)
+	 * makes this a no-op.
+	 *
+	 * @return void
+	 */
+	public function run_scheduled_scan(): void {
+		if ( null === $this->cached_collisions() ) {
+			$this->get_collisions();
+		}
+	}
+
+	/**
+	 * Remove any pending one-off scan event (deactivation).
+	 *
+	 * @return void
+	 */
+	public static function unschedule_scan(): void {
+		wp_clear_scheduled_hook( self::SCAN_EVENT );
+	}
 
 	/**
 	 * The colliding posts, from cache or a fresh scan.

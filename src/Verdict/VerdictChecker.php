@@ -42,7 +42,10 @@ defined( 'ABSPATH' ) || exit;
  * Lookups are batched and capped ({@see self::run()}), deduplicated per entity
  * (one catalog call covers every logged path pointing at the same id), cached
  * on the log rows themselves, and re-checked only after
- * {@see self::RECHECK_TTL}. Nothing here ever runs on a front-end request.
+ * {@see self::RECHECK_TTL}. Products are resolved in a single batched catalog
+ * request per run; categories (no batch lookup in Ecwid's API) cost one request
+ * each, bounded by the run's wall-clock budget. Nothing here ever runs on a
+ * front-end request.
  */
 final class VerdictChecker {
 
@@ -87,6 +90,21 @@ final class VerdictChecker {
 	 * @var int
 	 */
 	public const DEFAULT_BATCH = 25;
+
+	/**
+	 * Default wall-clock budget, in seconds, for a single run.
+	 *
+	 * Without it, a full batch of sequential category lookups plus the
+	 * deletion-history fetch could outlive a typical 30-60s
+	 * max_execution_time and starve whatever the cron run schedules after the
+	 * verdicts. The budget is checked *between* entities, so the lookup in
+	 * flight when it expires may still overshoot by its own HTTP timeout —
+	 * an approximate cap by design, not a hard deadline. Unresolved entities
+	 * simply stay in the queue for the next run.
+	 *
+	 * @var float
+	 */
+	public const TIME_BUDGET = 20.0;
 
 	/**
 	 * Ecwid catalog client (public storefront token).
@@ -152,26 +170,43 @@ final class VerdictChecker {
 	 * Check a capped batch of entities and store their verdicts.
 	 *
 	 * An indeterminate answer (catalog transport error, backend error) writes
-	 * no verdict, so the entity is naturally retried on a later run.
+	 * no verdict, so the entity is naturally retried on a later run. The same
+	 * holds for entities left over when the time budget expires.
 	 *
-	 * @param int $max_lookups Maximum catalog lookups this run.
+	 * @param int   $max_lookups Maximum catalog lookups this run.
+	 * @param float $time_budget Wall-clock seconds before the run stops early
+	 *                           (see {@see self::TIME_BUDGET}). At least one
+	 *                           entity is always attempted, so progress is
+	 *                           guaranteed even under a pathological budget.
 	 * @return array{checked:int,remaining:int} Entities resolved this run and
 	 *                                          entities still needing a verdict.
 	 */
-	public function run( int $max_lookups = self::DEFAULT_BATCH ): array {
+	public function run( int $max_lookups = self::DEFAULT_BATCH, float $time_budget = self::TIME_BUDGET ): array {
 		$stale_before = $this->stale_before();
 		$entities     = $this->log->entities_needing_verdict( $stale_before, max( 1, $max_lookups ) );
 
 		$checked = 0;
 		$now     = gmdate( 'Y-m-d H:i:s' );
+		$started = microtime( true );
+
+		// One batched catalog request answers every product in the batch up
+		// front; categories are looked up one by one inside the loop.
+		$product_statuses = $this->product_statuses( $entities );
 
 		// Fetched lazily: only a NOT_FOUND answer needs the deletion history,
 		// and the client caches it in a transient across runs anyway.
 		$deleted_loaded = false;
 		$deleted        = null;
 
+		$attempted = 0;
+
 		foreach ( $entities as $entity ) {
-			$status = $this->entity_status( $entity['classification'], $entity['entity_id'] );
+			if ( $attempted > 0 && ( microtime( true ) - $started ) >= $time_budget ) {
+				break;
+			}
+			++$attempted;
+
+			$status = $this->entity_status( $entity['classification'], $entity['entity_id'], $product_statuses );
 
 			if ( EcwidCatalogClient::UNKNOWN === $status ) {
 				continue;
@@ -223,15 +258,40 @@ final class VerdictChecker {
 	}
 
 	/**
-	 * Look up an entity's live catalog status.
+	 * Prefetch catalog statuses for every product entity in a batch.
 	 *
-	 * @param string $classification Entity classification (product/category).
-	 * @param int    $entity_id      Ecwid entity id.
+	 * @param array<int,array{classification:string,entity_id:int}> $entities Batch rows.
+	 * @return array<int,string>|null Product id => EXISTS / NOT_FOUND map, or
+	 *                                null when the batch lookup was
+	 *                                indeterminate (products then read as
+	 *                                UNKNOWN and are retried later).
+	 */
+	private function product_statuses( array $entities ): ?array {
+		$ids = array();
+
+		foreach ( $entities as $entity ) {
+			if ( UrlClassifier::TYPE_PRODUCT === $entity['classification'] ) {
+				$ids[] = $entity['entity_id'];
+			}
+		}
+
+		return $this->catalog->products_exist( $ids );
+	}
+
+	/**
+	 * Resolve an entity's live catalog status.
+	 *
+	 * Products come out of the prefetched batch map; categories — which Ecwid
+	 * offers no batch lookup for — cost one catalog request each.
+	 *
+	 * @param string     $classification   Entity classification (product/category).
+	 * @param int        $entity_id        Ecwid entity id.
+	 * @param array|null $product_statuses Result of {@see self::product_statuses()}.
 	 * @return string One of the EcwidCatalogClient EXISTS / NOT_FOUND / UNKNOWN constants.
 	 */
-	private function entity_status( string $classification, int $entity_id ): string {
+	private function entity_status( string $classification, int $entity_id, ?array $product_statuses ): string {
 		if ( UrlClassifier::TYPE_PRODUCT === $classification ) {
-			return $this->catalog->product_exists( $entity_id );
+			return $product_statuses[ $entity_id ] ?? EcwidCatalogClient::UNKNOWN;
 		}
 
 		return $this->catalog->category_exists( $entity_id );
