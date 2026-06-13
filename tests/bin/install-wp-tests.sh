@@ -23,7 +23,7 @@ WP_CORE_DIR=${WP_CORE_DIR-$TMPDIR/wordpress}
 
 download() {
 	if [ "$(which curl)" ]; then
-		curl -s "$1" >"$2"
+		curl -fsSL "$1" -o "$2"
 	elif [ "$(which wget)" ]; then
 		wget -nv -O "$2" "$1"
 	else
@@ -47,14 +47,10 @@ elif [[ $WP_VERSION =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
 elif [[ $WP_VERSION == 'nightly' || $WP_VERSION == 'trunk' ]]; then
 	WP_TESTS_TAG="trunk"
 else
-	# http serves a single offer, whereas https serves multiple. we only want one
-	download http://api.wordpress.org/core/version-check/1.7/ "$TMPDIR/wp-latest.json"
-	grep '[0-9]+\.[0-9]+(\.[0-9]+)?' "$TMPDIR/wp-latest.json" 1>/dev/null
-	if [ $? -ne 0 ]; then
-		echo "Latest WordPress version could not be found"
-		exit 1
-	fi
-	LATEST_VERSION=$(grep -o '"version":"[^"]*' "$TMPDIR/wp-latest.json" | sed 's/"version":"//')
+	# The version-check API (https) returns multiple offers; the first is the
+	# latest stable. Parse it directly — no fragile pre-grep.
+	download https://api.wordpress.org/core/version-check/1.7/ "$TMPDIR/wp-latest.json"
+	LATEST_VERSION=$(grep -o '"version":"[^"]*' "$TMPDIR/wp-latest.json" | sed 's/"version":"//' | head -1)
 	if [[ -z "$LATEST_VERSION" ]]; then
 		echo "Latest WordPress version could not be found"
 		exit 1
