@@ -108,13 +108,23 @@ final class SchemaMigrationTest extends WP_UnitTestCase {
 	/**
 	 * Whether a table exists.
 	 *
+	 * Probes with DESCRIBE rather than SHOW TABLES: WP_UnitTestCase rewrites
+	 * CREATE TABLE into CREATE TEMPORARY TABLE for transaction isolation, and
+	 * temporary tables are invisible to SHOW TABLES — but DESCRIBE sees them.
+	 * A missing table makes DESCRIBE error, so a suppressed empty result means
+	 * "absent".
+	 *
 	 * @param string $table Fully-prefixed table name.
 	 * @return bool
 	 */
 	private function table_exists( string $table ): bool {
 		global $wpdb;
 
-		return (bool) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		$suppressed = $wpdb->suppress_errors( true );
+		$columns    = $wpdb->get_results( "DESCRIBE {$table}" );
+		$wpdb->suppress_errors( $suppressed );
+
+		return ! empty( $columns );
 	}
 
 	/**
