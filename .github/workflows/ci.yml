@@ -30,3 +30,44 @@ jobs:
 
       - name: PHPUnit
         run: composer phpunit
+
+  integration:
+    name: Integration (PHP 8.3 + MySQL)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
+          extensions: mysqli
+          coverage: none
+
+      - name: Install Subversion (WordPress test library is fetched via svn)
+        run: sudo apt-get update && sudo apt-get install -y subversion
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install WordPress test suite + test database
+        run: bash tests/bin/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 latest
+
+      - name: PHPUnit (integration — schema migration against real WP + MySQL)
+        env:
+          WP_TESTS_DIR: /tmp/wordpress-tests-lib
+          WP_TESTS_PHPUNIT_POLYFILLS_PATH: ${{ github.workspace }}/vendor/yoast/phpunit-polyfills
+        run: composer phpunit:integration

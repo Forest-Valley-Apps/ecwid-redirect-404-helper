@@ -35,6 +35,7 @@
         "phpcs": "phpcs",
         "phpcbf": "phpcbf",
         "phpunit": "phpunit",
+        "phpunit:integration": "phpunit -c phpunit-integration.xml.dist",
         "test": [
             "@phpcs",
             "@phpunit"
