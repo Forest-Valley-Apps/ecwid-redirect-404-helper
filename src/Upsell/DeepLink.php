@@ -261,7 +261,7 @@ final class DeepLink {
 	}
 
 	/**
-	 * base64url-encode a source path: standard base64 with `+/` mapped to `-_`
+	 * Base64url-encode a source path: standard base64 with `+/` mapped to `-_`
 	 * and padding stripped, so every character is URL-safe and survives the
 	 * `esc_url()` the call site applies.
 	 *
@@ -269,6 +269,7 @@ final class DeepLink {
 	 * @return string
 	 */
 	private static function encode_src( string $src ): string {
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- URL-safe transport encoding of a path for a deep-link param, not obfuscation.
 		return rtrim( strtr( base64_encode( $src ), '+/', '-_' ), '=' );
 	}
 }
