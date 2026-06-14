@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace FV\WPEcwidRedirectHelper;
 
+use FV\WPEcwidRedirectHelper\Admin\Assets;
 use FV\WPEcwidRedirectHelper\Admin\Menu;
 use FV\WPEcwidRedirectHelper\Capture\NotFoundCapture;
 use FV\WPEcwidRedirectHelper\Collision\CollisionNotice;
@@ -83,6 +84,7 @@ final class Plugin {
 			Tasks::ensure_scheduled();
 
 			( new Menu() )->register();
+			( new Assets() )->register();
 			( new CollisionNotice() )->register();
 			( new UpgradeCta() )->register();
 

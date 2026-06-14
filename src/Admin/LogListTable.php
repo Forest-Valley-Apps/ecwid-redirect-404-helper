@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace FV\WPEcwidRedirectHelper\Admin;
 
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
+use FV\WPEcwidRedirectHelper\Upsell\DeepLink;
 use FV\WPEcwidRedirectHelper\Url\UrlClassifier;
 use FV\WPEcwidRedirectHelper\Verdict\VerdictChecker;
 
@@ -20,10 +21,16 @@ if ( ! class_exists( '\WP_List_Table' ) ) {
 }
 
 /**
- * Renders the captured 404s: classification badge, hit count, last seen,
- * status, with search, classification/status filters, sortable columns and a
- * bulk Delete action. Reads via {@see NotFoundLog::query()}; never writes —
- * the page controller owns every mutation.
+ * Renders the captured 404s: classification badge, the fixable layer, hit
+ * count, last seen, status, with search, classification/status filters,
+ * sortable columns and a bulk Delete action. Reads via {@see NotFoundLog::query()};
+ * never writes — the page controller owns every mutation.
+ *
+ * The per-row routing is the funnel made honest: a WordPress-layer row keeps the
+ * free "Create redirect" 301; a storefront-layer row (an Ecwid product/category
+ * route no WordPress plugin can 301) instead gets a "Fix in app" deep-link, with
+ * the row's own path threaded through so the app can pre-fill it. The layer is
+ * derived ({@see RowLayer}), never stored.
  */
 final class LogListTable extends \WP_List_Table {
 
@@ -49,12 +56,22 @@ final class LogListTable extends \WP_List_Table {
 	private array $query_args;
 
 	/**
+	 * Deep-link builder for storefront-layer "Fix in app" actions, or null until
+	 * first needed (resolved from the environment only when a storefront row
+	 * actually renders, so a WP-only log does no discovery).
+	 *
+	 * @var DeepLink|null
+	 */
+	private ?DeepLink $deep_link;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param NotFoundLog          $log        Log repository.
 	 * @param array<string,string> $query_args The request's filter/sort state.
+	 * @param DeepLink|null        $deep_link  Deep-link builder (injectable for tests).
 	 */
-	public function __construct( NotFoundLog $log, array $query_args ) {
+	public function __construct( NotFoundLog $log, array $query_args, ?DeepLink $deep_link = null ) {
 		parent::__construct(
 			array(
 				'singular' => 'fv-erh-404',
@@ -65,6 +82,20 @@ final class LogListTable extends \WP_List_Table {
 
 		$this->log        = $log;
 		$this->query_args = $query_args;
+		$this->deep_link  = $deep_link;
+	}
+
+	/**
+	 * The deep-link builder, resolved from the environment on first use.
+	 *
+	 * @return DeepLink
+	 */
+	private function deep_link(): DeepLink {
+		if ( null === $this->deep_link ) {
+			$this->deep_link = DeepLink::from_environment();
+		}
+
+		return $this->deep_link;
 	}
 
 	/**
@@ -77,6 +108,7 @@ final class LogListTable extends \WP_List_Table {
 			'cb'             => '<input type="checkbox" />',
 			'url_path'       => __( 'URL', 'redirect-404-helper-for-ecwid' ),
 			'classification' => __( 'Type', 'redirect-404-helper-for-ecwid' ),
+			'layer'          => __( 'Fix at', 'redirect-404-helper-for-ecwid' ),
 			'verdict'        => __( 'Catalog', 'redirect-404-helper-for-ecwid' ),
 			'hit_count'      => __( 'Hits', 'redirect-404-helper-for-ecwid' ),
 			'referrer'       => __( 'Last referrer', 'redirect-404-helper-for-ecwid' ),
@@ -220,14 +252,6 @@ final class LogListTable extends \WP_List_Table {
 		$path = (string) $item['url_path'];
 		$id   = (int) $item['id'];
 
-		$create_url = add_query_arg(
-			array(
-				'page'   => RedirectsPage::PAGE_SLUG,
-				'source' => rawurlencode( $path ),
-			),
-			admin_url( 'admin.php' )
-		);
-
 		$delete_url = wp_nonce_url(
 			add_query_arg(
 				array(
@@ -240,13 +264,43 @@ final class LogListTable extends \WP_List_Table {
 			'fv_erh_log_delete_' . $id
 		);
 
-		$actions = array(
-			'create-redirect' => sprintf(
-				'<a href="%s">%s</a>',
-				esc_url( $create_url ),
-				esc_html__( 'Create redirect', 'redirect-404-helper-for-ecwid' )
-			),
-			'delete'          => sprintf(
+		// Layer-aware primary action: WordPress-layer rows can be fixed with the
+		// free 301; storefront-layer rows can only be fixed in the app, so they
+		// deep-link there (with this path threaded through for prefill) instead of
+		// offering a redirect that could never fire.
+		$layer = RowLayer::for_classification( (string) $item['classification'] );
+
+		if ( RowLayer::LAYER_STOREFRONT === $layer ) {
+			$target  = RowLayer::deep_link_target( (string) ( $item['verdict'] ?? '' ) );
+			$app_url = $this->deep_link()->url_for( $target, $path );
+
+			$primary = array(
+				'fix-in-app' => sprintf(
+					'<a href="%s" target="_blank" rel="noopener noreferrer">%s ↗</a>',
+					esc_url( $app_url ),
+					esc_html__( 'Fix in app', 'redirect-404-helper-for-ecwid' )
+				),
+			);
+		} else {
+			$create_url = add_query_arg(
+				array(
+					'page'   => RedirectsPage::PAGE_SLUG,
+					'source' => rawurlencode( $path ),
+				),
+				admin_url( 'admin.php' )
+			);
+
+			$primary = array(
+				'create-redirect' => sprintf(
+					'<a href="%s">%s</a>',
+					esc_url( $create_url ),
+					esc_html__( 'Create redirect', 'redirect-404-helper-for-ecwid' )
+				),
+			);
+		}
+
+		$actions = $primary + array(
+			'delete' => sprintf(
 				'<a href="%s">%s</a>',
 				esc_url( $delete_url ),
 				esc_html__( 'Delete', 'redirect-404-helper-for-ecwid' )
@@ -254,6 +308,22 @@ final class LogListTable extends \WP_List_Table {
 		);
 
 		return '<strong>' . esc_html( $path ) . '</strong>' . $this->row_actions( $actions );
+	}
+
+	/**
+	 * Layer column: which layer this 404 can be fixed at (derived, not stored).
+	 *
+	 * @param array $item Log row.
+	 * @return string
+	 */
+	protected function column_layer( $item ): string {
+		$layer = RowLayer::for_classification( (string) $item['classification'] );
+
+		return sprintf(
+			'<span class="fv-erh-badge fv-erh-badge--layer-%1$s">%2$s</span>',
+			esc_attr( $layer ),
+			esc_html( RowLayer::label( $layer ) )
+		);
 	}
 
 	/**

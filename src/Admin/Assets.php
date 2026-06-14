@@ -1,0 +1,117 @@
+<?php
+/**
+ * Admin stylesheet for the plugin's own screens.
+ *
+ * @package FV\WPEcwidRedirectHelper
+ */
+
+declare( strict_types=1 );
+
+namespace FV\WPEcwidRedirectHelper\Admin;
+
+use FV\WPEcwidRedirectHelper\Plugin;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Registers and enqueues the plugin's admin CSS through one handle.
+ *
+ * All of the plugin's styled chrome — the 404-log badges (type, layer, catalog
+ * verdict), the ellipsized cells, the slug-collision panel, the contextual
+ * upgrade CTAs, and the upgrade page grid — share this single registered
+ * stylesheet, attached via `wp_add_inline_style()` rather than echoed inline
+ * (which Plugin Check flags). The handle has no file source; the CSS travels
+ * as the inline payload.
+ *
+ * Loaded only on the plugin's own admin screens (`page=fv-erh-*`). The one
+ * styled element that can appear elsewhere — the site-wide slug-collision admin
+ * notice — uses core's `.notice` classes only, so it needs no plugin CSS off
+ * these screens; nothing else renders the `fv-erh-*` classes outside them.
+ */
+final class Assets {
+
+	/**
+	 * The shared style handle.
+	 *
+	 * @var string
+	 */
+	private const HANDLE = 'fv-erh-admin';
+
+	/**
+	 * Register the enqueue hook.
+	 *
+	 * @return void
+	 */
+	public function register(): void {
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
+	}
+
+	/**
+	 * Enqueue the stylesheet on the plugin's own admin screens.
+	 *
+	 * @param string $hook_suffix The current admin page's hook suffix.
+	 * @return void
+	 */
+	public function enqueue( string $hook_suffix ): void {
+		if ( ! self::is_plugin_screen( $hook_suffix ) ) {
+			return;
+		}
+
+		// A source-less handle: the CSS is delivered entirely as the inline
+		// payload below, which `wp_add_inline_style()` prints once the (empty)
+		// handle is enqueued.
+		wp_register_style( self::HANDLE, false, array(), Plugin::VERSION );
+		wp_enqueue_style( self::HANDLE );
+		wp_add_inline_style( self::HANDLE, self::css() );
+	}
+
+	/**
+	 * Whether the current admin screen is one of the plugin's pages.
+	 *
+	 * Every plugin page slug begins `fv-erh-`, and the hook suffix carries the
+	 * slug verbatim (`toplevel_page_fv-erh-404-log`, `..._page_fv-erh-redirects`,
+	 * etc.), so a substring test catches them all.
+	 *
+	 * @param string $hook_suffix The admin page hook suffix.
+	 * @return bool
+	 */
+	private static function is_plugin_screen( string $hook_suffix ): bool {
+		return false !== strpos( $hook_suffix, 'fv-erh-' );
+	}
+
+	/**
+	 * The plugin's admin CSS.
+	 *
+	 * @return string
+	 */
+	private static function css(): string {
+		return '
+			.fv-erh-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; line-height:1.6; color:#fff; }
+			.fv-erh-badge--product { background:#27ae60; }
+			.fv-erh-badge--category { background:#16a085; }
+			.fv-erh-badge--wp-page { background:#95a5a6; }
+			.fv-erh-badge--layer-wp { background:#34495e; }
+			.fv-erh-badge--layer-storefront { background:#8e44ad; }
+			.fv-erh-badge--verdict-in-catalog { background:#2980b9; }
+			.fv-erh-badge--verdict-deleted { background:#c0392b; }
+			.fv-erh-badge--verdict-never-existed { background:#e67e22; }
+			.fv-erh-badge--verdict-not-in-catalog { background:#7f8c8d; }
+			.fv-erh-ellipsis { display:inline-block; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
+			.fv-erh-collision-panel { background:#fff; border:1px solid #c3c4c7; border-left:4px solid #dba617; padding:1px 12px 12px; margin:12px 0; }
+			.fv-erh-collision-table { max-width:760px; }
+			.fv-erh-collision-allclear { color:#646970; }
+			.fv-erh-cta { background:#fff; border:1px solid #c3c4c7; border-left:4px solid #27ae60; padding:4px 16px 12px; margin:12px 0; max-width:760px; }
+			.fv-erh-cta__tag { display:inline-block; margin-top:12px; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:#fff; background:#27ae60; }
+			.fv-erh-cta__title { margin:8px 0 4px; font-size:14px; color:#2c3e50; }
+			.fv-erh-cta__body { margin:0 0 12px; color:#2c3e50; }
+			.fv-erh-cta__actions { margin:0; }
+			.fv-erh-cta__dismiss { margin-left:8px; color:#646970; text-decoration:none; }
+			.fv-erh-upgrade__lead { max-width:760px; font-size:14px; color:#2c3e50; }
+			.fv-erh-upgrade__note { max-width:760px; color:#646970; }
+			.fv-erh-upgrade__grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:16px; max-width:760px; margin-top:16px; }
+			.fv-erh-upgrade__card { background:#fff; border:1px solid #c3c4c7; border-top:3px solid #27ae60; padding:4px 16px 16px; }
+			.fv-erh-upgrade__card h2 { font-size:15px; color:#2c3e50; }
+			.fv-erh-upgrade__card p { color:#2c3e50; }
+		';
+	}
+}

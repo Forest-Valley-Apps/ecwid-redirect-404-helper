@@ -45,13 +45,6 @@ final class UpgradeCta {
 	private const CAPABILITY = 'manage_options';
 
 	/**
-	 * Whether the shared style block has already been printed this request.
-	 *
-	 * @var bool
-	 */
-	private static bool $style_printed = false;
-
-	/**
 	 * Deep-link builder, or null until first needed.
 	 *
 	 * Built lazily ({@see self::deep_link()}) so merely constructing this class —
@@ -133,7 +126,9 @@ final class UpgradeCta {
 	 * @param string $cta_key Stable CTA identifier (also the dismiss key).
 	 * @param string $heading Box heading (already translated).
 	 * @param string $body    Body copy (already translated, plain text).
-	 * @param array  $actions Buttons; each ['label' => string, 'target' => string], first is primary.
+	 * @param array  $actions Buttons; each ['label' => string, 'target' => string, 'src' => string],
+	 *                        first is primary. `src` is an optional source path the
+	 *                        app deep-link is pre-filled with.
 	 * @return void
 	 */
 	public function render( string $cta_key, string $heading, string $body, array $actions ): void {
@@ -146,8 +141,6 @@ final class UpgradeCta {
 			self::ACTION_DISMISS . '_' . $cta_key
 		);
 
-		$this->print_style();
-
 		echo '<div class="fv-erh-cta">';
 		echo '<span class="fv-erh-cta__tag">' . esc_html__( 'Paid feature', 'redirect-404-helper-for-ecwid' ) . '</span>';
 		echo '<h2 class="fv-erh-cta__title">' . esc_html( $heading ) . '</h2>';
@@ -159,6 +152,7 @@ final class UpgradeCta {
 		foreach ( $actions as $action ) {
 			$label  = (string) ( $action['label'] ?? '' );
 			$target = (string) ( $action['target'] ?? DeepLink::TARGET_HOME );
+			$src    = (string) ( $action['src'] ?? '' );
 			if ( '' === $label ) {
 				continue;
 			}
@@ -170,7 +164,7 @@ final class UpgradeCta {
 			printf(
 				'<a class="%1$s" href="%2$s" target="_blank" rel="noopener noreferrer">%3$s ↗</a> ',
 				esc_attr( $classes ),
-				esc_url( $this->deep_link()->url_for( $target ) ),
+				esc_url( $this->deep_link()->url_for( $target, $src ) ),
 				esc_html( $label )
 			);
 		}
@@ -208,27 +202,5 @@ final class UpgradeCta {
 
 		$dismissed[] = $cta_key;
 		update_option( self::OPTION, $dismissed, false );
-	}
-
-	/**
-	 * Print the shared CTA style block once per request.
-	 *
-	 * @return void
-	 */
-	private function print_style(): void {
-		if ( self::$style_printed ) {
-			return;
-		}
-
-		self::$style_printed = true;
-
-		echo '<style>
-			.fv-erh-cta { background:#fff; border:1px solid #c3c4c7; border-left:4px solid #27ae60; padding:4px 16px 12px; margin:12px 0; max-width:760px; }
-			.fv-erh-cta__tag { display:inline-block; margin-top:12px; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:#fff; background:#27ae60; }
-			.fv-erh-cta__title { margin:8px 0 4px; font-size:14px; color:#2c3e50; }
-			.fv-erh-cta__body { margin:0 0 12px; color:#2c3e50; }
-			.fv-erh-cta__actions { margin:0; }
-			.fv-erh-cta__dismiss { margin-left:8px; color:#646970; text-decoration:none; }
-		</style>';
 	}
 }

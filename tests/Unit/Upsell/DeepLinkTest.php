@@ -92,4 +92,43 @@ final class DeepLinkTest extends TestCase {
 			$link->url_for( DeepLink::TARGET_MIGRATION_IMPORT )
 		);
 	}
+
+	public function test_source_path_is_appended_base64url_encoded(): void {
+		$link = new DeepLink( self::STORE, self::SLUG, true, self::MARKET );
+
+		// base64url( '/store/blue-shirt-p123' ) — '+/' mapped to '-_', no padding.
+		$expected_src = rtrim( strtr( base64_encode( '/store/blue-shirt-p123' ), '+/', '-_' ), '=' );
+
+		$this->assertSame(
+			'https://my.ecwid.com/store/130416012#app:name=seo-redirect-manager&app_state=storefront-layer&src=' . $expected_src,
+			$link->url_for( DeepLink::TARGET_STOREFRONT_LAYER, '/store/blue-shirt-p123' )
+		);
+	}
+
+	public function test_source_path_uses_url_safe_alphabet(): void {
+		$link = new DeepLink( self::STORE, self::SLUG, true, self::MARKET );
+
+		// '>>>???' base64-encodes to 'Pj4+Pz8/', exercising both '+' and '/' so the
+		// url-safe mapping ('-_') and padding strip are actually proven.
+		$url = $link->url_for( DeepLink::TARGET_STOREFRONT_LAYER, '/store/x>>>???' );
+
+		$this->assertStringContainsString( '&src=', $url );
+		$src = substr( $url, strpos( $url, '&src=' ) + 5 );
+		$this->assertDoesNotMatchRegularExpression( '~[+/=]~', $src );
+	}
+
+	public function test_empty_source_falls_back_to_bare_target(): void {
+		$link = new DeepLink( self::STORE, self::SLUG, true, self::MARKET );
+
+		$this->assertSame(
+			'https://my.ecwid.com/store/130416012#app:name=seo-redirect-manager&app_state=storefront-layer',
+			$link->url_for( DeepLink::TARGET_STOREFRONT_LAYER, '' )
+		);
+	}
+
+	public function test_storeless_ignores_source_and_returns_market_url(): void {
+		$link = new DeepLink( 0, self::SLUG, true, self::MARKET );
+
+		$this->assertSame( self::MARKET, $link->url_for( DeepLink::TARGET_STOREFRONT_LAYER, '/store/x-p1' ) );
+	}
 }

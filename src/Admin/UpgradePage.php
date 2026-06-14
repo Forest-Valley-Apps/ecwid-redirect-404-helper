@@ -23,10 +23,10 @@ defined( 'ABSPATH' ) || exit;
  * contextual, dismissible prompts elsewhere ({@see \FV\WPEcwidRedirectHelper\Upsell\UpgradeCta})
  * are what stay out of the way; this page is where the detail lives.
  *
- * The free/paid line is drawn at **effort, not capability**, and the page says
- * so: the free plugin finds, classifies, and hand-fixes 404s at the WordPress
- * layer; the app automates and bulk-handles them, and reaches the storefront
- * layer a WordPress plugin cannot.
+ * The free/paid line is drawn at **layer + scale**, and the page says so: the
+ * free plugin finds, classifies, and hand-fixes 404s at the WordPress layer; the
+ * app bulk-handles and automates them, and reaches the storefront layer a
+ * WordPress plugin physically cannot. (See `specs/helper-as-funnel-plan.md`.)
  */
 final class UpgradePage {
 
@@ -86,8 +86,6 @@ final class UpgradePage {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'redirect-404-helper-for-ecwid' ) );
 		}
-
-		$this->print_style();
 
 		echo '<div class="wrap">';
 		echo '<h1>' . esc_html__( 'Upgrade — Powered by Redirect & 404 Manager', 'redirect-404-helper-for-ecwid' ) . '</h1>';
@@ -165,21 +163,5 @@ final class UpgradePage {
 			esc_html( $feature['cta'] )
 		);
 		echo '</div>';
-	}
-
-	/**
-	 * Print the page style block.
-	 *
-	 * @return void
-	 */
-	private function print_style(): void {
-		echo '<style>
-			.fv-erh-upgrade__lead { max-width:760px; font-size:14px; color:#2c3e50; }
-			.fv-erh-upgrade__note { max-width:760px; color:#646970; }
-			.fv-erh-upgrade__grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:16px; max-width:760px; margin-top:16px; }
-			.fv-erh-upgrade__card { background:#fff; border:1px solid #c3c4c7; border-top:3px solid #27ae60; padding:4px 16px 16px; }
-			.fv-erh-upgrade__card h2 { font-size:15px; color:#2c3e50; }
-			.fv-erh-upgrade__card p { color:#2c3e50; }
-		</style>';
 	}
 }

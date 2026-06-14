@@ -51,6 +51,7 @@ final class PluginTest extends TestCase {
 		Functions\when( 'wp_next_scheduled' )->justReturn( time() + 100 );
 
 		Actions\expectAdded( 'admin_menu' )->once();
+		Actions\expectAdded( 'admin_enqueue_scripts' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_connect' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_refresh' )->once();
 		Actions\expectAdded( 'admin_post_fv_erh_disconnect' )->once();
@@ -73,6 +74,7 @@ final class PluginTest extends TestCase {
 		Functions\when( 'is_admin' )->justReturn( false );
 
 		Actions\expectAdded( 'admin_menu' )->never();
+		Actions\expectAdded( 'admin_enqueue_scripts' )->never();
 		Actions\expectAdded( 'admin_post_fv_erh_connect' )->never();
 		Actions\expectAdded( 'admin_post_fv_erh_refresh' )->never();
 		Actions\expectAdded( 'admin_post_fv_erh_disconnect' )->never();

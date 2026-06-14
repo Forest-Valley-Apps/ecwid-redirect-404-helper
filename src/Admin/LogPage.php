@@ -244,8 +244,6 @@ final class LogPage {
 			self::ACTION_EXPORT
 		);
 
-		$this->print_styles();
-
 		echo '<div class="wrap">';
 		echo '<h1 class="wp-heading-inline">' . esc_html__( '404 Log', 'redirect-404-helper-for-ecwid' ) . '</h1>';
 		echo ' <a href="' . esc_url( $export_url ) . '" class="page-title-action">' . esc_html__( 'Export CSV', 'redirect-404-helper-for-ecwid' ) . '</a>';
@@ -544,27 +542,5 @@ final class LogPage {
 			esc_attr( $type ),
 			esc_html( $message )
 		);
-	}
-
-	/**
-	 * Print the small style block for badges and ellipsized cells.
-	 *
-	 * @return void
-	 */
-	private function print_styles(): void {
-		echo '<style>
-			.fv-erh-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; line-height:1.6; color:#fff; }
-			.fv-erh-badge--product { background:#27ae60; }
-			.fv-erh-badge--category { background:#16a085; }
-			.fv-erh-badge--wp-page { background:#95a5a6; }
-			.fv-erh-badge--verdict-in-catalog { background:#2980b9; }
-			.fv-erh-badge--verdict-deleted { background:#c0392b; }
-			.fv-erh-badge--verdict-never-existed { background:#e67e22; }
-			.fv-erh-badge--verdict-not-in-catalog { background:#7f8c8d; }
-			.fv-erh-ellipsis { display:inline-block; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
-			.fv-erh-collision-panel { background:#fff; border:1px solid #c3c4c7; border-left:4px solid #dba617; padding:1px 12px 12px; margin:12px 0; }
-			.fv-erh-collision-table { max-width:760px; }
-			.fv-erh-collision-allclear { color:#646970; }
-		</style>';
 	}
 }

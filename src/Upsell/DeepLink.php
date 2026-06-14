@@ -30,6 +30,13 @@ defined( 'ABSPATH' ) || exit;
  * The target key travels in Ecwid's `app_state` parameter; the slug is
  * `seo-redirect-manager` on prod, `seo-redirect-manager-dev` on dev/staging.
  *
+ * Optionally, {@see self::url_for()} carries a **source path** — the exact 404
+ * the merchant clicked — as `&src=<base64url(path)>`, so the app can pre-fill
+ * its redirect editor with it (parent-side Ask A, `docs/parent-product-tasks.md`).
+ * The encoding is base64url so the value survives `esc_url()` at the call site;
+ * a missing source simply yields the bare target, and the app degrades to the
+ * un-prefilled screen if Ask A has not landed yet — it never errors.
+ *
  * Whether the app is installed is resolved render-safely by
  * {@see AppInstallStatus} (cache-only). When that is indeterminate, this falls
  * back to the listing URL — which works whether or not the app is installed.
@@ -203,20 +210,22 @@ final class DeepLink {
 	 * always has a valid, useful destination.
 	 *
 	 * @param string $target One of the TARGET_* keys (unknown → home).
+	 * @param string $src    Optional source path to pre-fill the app with (the
+	 *                       404 the merchant clicked). Empty → bare target.
 	 * @return string
 	 */
-	public function url_for( string $target ): string {
+	public function url_for( string $target, string $src = '' ): string {
 		$target = in_array( $target, self::TARGETS, true ) ? $target : self::TARGET_HOME;
 
+		// No store id means no store-scoped control-panel URL to hang a prefill
+		// on; the generic listing is the only useful destination.
 		if ( $this->store_id <= 0 ) {
 			return $this->market_url;
 		}
 
-		if ( true === $this->installed ) {
-			return $this->expand( self::DEEP_LINK_TEMPLATE, $target );
-		}
+		$template = true === $this->installed ? self::DEEP_LINK_TEMPLATE : self::LISTING_TEMPLATE;
 
-		return $this->expand( self::LISTING_TEMPLATE, $target );
+		return $this->expand( $template, $target, $src );
 	}
 
 	/**
@@ -229,17 +238,37 @@ final class DeepLink {
 	}
 
 	/**
-	 * Substitute the store id, slug, and target into a URL template.
+	 * Substitute the store id, slug, and target into a URL template, appending
+	 * the optional base64url-encoded source path.
 	 *
 	 * @param string $template Template with {store_id}/{slug}/{target} tokens.
 	 * @param string $target   Validated target key.
+	 * @param string $src      Optional source path (empty → no `src` param).
 	 * @return string
 	 */
-	private function expand( string $template, string $target ): string {
-		return str_replace(
+	private function expand( string $template, string $target, string $src ): string {
+		$url = str_replace(
 			array( '{store_id}', '{slug}', '{target}' ),
 			array( (string) $this->store_id, rawurlencode( $this->slug ), rawurlencode( $target ) ),
 			$template
 		);
+
+		if ( '' !== $src ) {
+			$url .= '&src=' . self::encode_src( $src );
+		}
+
+		return $url;
+	}
+
+	/**
+	 * base64url-encode a source path: standard base64 with `+/` mapped to `-_`
+	 * and padding stripped, so every character is URL-safe and survives the
+	 * `esc_url()` the call site applies.
+	 *
+	 * @param string $src Raw source path.
+	 * @return string
+	 */
+	private static function encode_src( string $src ): string {
+		return rtrim( strtr( base64_encode( $src ), '+/', '-_' ), '=' );
 	}
 }
