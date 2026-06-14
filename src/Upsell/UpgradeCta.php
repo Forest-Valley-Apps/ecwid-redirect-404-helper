@@ -110,7 +110,7 @@ final class UpgradeCta {
 	 */
 	public function handle_dismiss(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to do this.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- verified by check_admin_referer() right below (the nonce covers the cta key).
@@ -149,7 +149,7 @@ final class UpgradeCta {
 		$this->print_style();
 
 		echo '<div class="fv-erh-cta">';
-		echo '<span class="fv-erh-cta__tag">' . esc_html__( 'Paid feature', 'ecwid-redirect-404-helper' ) . '</span>';
+		echo '<span class="fv-erh-cta__tag">' . esc_html__( 'Paid feature', 'redirect-404-helper-for-ecwid' ) . '</span>';
 		echo '<h2 class="fv-erh-cta__title">' . esc_html( $heading ) . '</h2>';
 		echo '<p class="fv-erh-cta__body">' . esc_html( $body ) . '</p>';
 
@@ -176,7 +176,7 @@ final class UpgradeCta {
 		}
 
 		echo '<a class="fv-erh-cta__dismiss" href="' . esc_url( $dismiss_url ) . '">'
-			. esc_html__( 'Dismiss', 'ecwid-redirect-404-helper' )
+			. esc_html__( 'Dismiss', 'redirect-404-helper-for-ecwid' )
 			. '</a>';
 
 		echo '</p>';

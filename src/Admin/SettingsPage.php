@@ -98,47 +98,47 @@ final class SettingsPage {
 	 */
 	public function render_page(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		$discovery = EcwidPluginDiscovery::discover();
 		$connected = $this->state->is_connected();
 
 		echo '<div class="wrap">';
-		echo '<h1>' . esc_html__( 'Redirect & 404 Helper for Ecwid', 'ecwid-redirect-404-helper' ) . '</h1>';
+		echo '<h1>' . esc_html__( 'Redirect & 404 Helper for Ecwid', 'redirect-404-helper-for-ecwid' ) . '</h1>';
 
 		$this->render_notice();
 
 		echo '<table class="form-table" role="presentation"><tbody>';
 		$this->render_row(
-			__( 'Ecwid plugin', 'ecwid-redirect-404-helper' ),
+			__( 'Ecwid plugin', 'redirect-404-helper-for-ecwid' ),
 			$discovery->plugin_active()
-				? __( 'Detected', 'ecwid-redirect-404-helper' )
-				: __( 'Not detected', 'ecwid-redirect-404-helper' )
+				? __( 'Detected', 'redirect-404-helper-for-ecwid' )
+				: __( 'Not detected', 'redirect-404-helper-for-ecwid' )
 		);
 		$this->render_row(
-			__( 'Store ID', 'ecwid-redirect-404-helper' ),
+			__( 'Store ID', 'redirect-404-helper-for-ecwid' ),
 			$discovery->has_store_id()
 				? (string) $discovery->store_id()
-				: __( '—', 'ecwid-redirect-404-helper' )
+				: __( '—', 'redirect-404-helper-for-ecwid' )
 		);
 		$this->render_row(
-			__( 'Storefront token', 'ecwid-redirect-404-helper' ),
+			__( 'Storefront token', 'redirect-404-helper-for-ecwid' ),
 			$discovery->has_public_token()
-				? __( 'Available', 'ecwid-redirect-404-helper' )
-				: __( 'Not available', 'ecwid-redirect-404-helper' )
+				? __( 'Available', 'redirect-404-helper-for-ecwid' )
+				: __( 'Not available', 'redirect-404-helper-for-ecwid' )
 		);
 		$this->render_row(
-			__( 'Connection', 'ecwid-redirect-404-helper' ),
+			__( 'Connection', 'redirect-404-helper-for-ecwid' ),
 			$connected
-				? __( 'Connected', 'ecwid-redirect-404-helper' )
-				: __( 'Not connected', 'ecwid-redirect-404-helper' )
+				? __( 'Connected', 'redirect-404-helper-for-ecwid' )
+				: __( 'Not connected', 'redirect-404-helper-for-ecwid' )
 		);
 
 		$verified_at = $this->state->verified_at();
 		if ( $verified_at > 0 ) {
 			$this->render_row(
-				__( 'Last verified', 'ecwid-redirect-404-helper' ),
+				__( 'Last verified', 'redirect-404-helper-for-ecwid' ),
 				$this->format_timestamp( $verified_at )
 			);
 		}
@@ -224,7 +224,7 @@ final class SettingsPage {
 	 */
 	private function guard( string $action ): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to do this.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		check_admin_referer( $action );
@@ -298,18 +298,18 @@ final class SettingsPage {
 
 		switch ( $discovery->status() ) {
 			case EcwidPluginDiscovery::STATUS_PLUGIN_MISSING:
-				$message = __( 'Install and activate the official Ecwid Shopping Cart plugin, then configure your store to connect.', 'ecwid-redirect-404-helper' );
+				$message = __( 'Install and activate the official Ecwid Shopping Cart plugin, then configure your store to connect.', 'redirect-404-helper-for-ecwid' );
 				break;
 			case EcwidPluginDiscovery::STATUS_NOT_CONFIGURED:
-				$message = __( 'The Ecwid plugin is active but no store is configured yet. Connect your Ecwid store in its settings first.', 'ecwid-redirect-404-helper' );
+				$message = __( 'The Ecwid plugin is active but no store is configured yet. Connect your Ecwid store in its settings first.', 'redirect-404-helper-for-ecwid' );
 				break;
 			case EcwidPluginDiscovery::STATUS_NO_TOKEN:
-				$message = __( 'A store ID was found but no storefront token is available yet. Reconnect your store in the Ecwid plugin to issue one.', 'ecwid-redirect-404-helper' );
+				$message = __( 'A store ID was found but no storefront token is available yet. Reconnect your store in the Ecwid plugin to issue one.', 'redirect-404-helper-for-ecwid' );
 				break;
 			case EcwidPluginDiscovery::STATUS_READY:
 				$message = $connected
-					? __( 'Your Ecwid store is connected. Use Refresh to re-verify and reload redirect rules.', 'ecwid-redirect-404-helper' )
-					: __( 'Your Ecwid store was detected. Click Connect to verify and start using it.', 'ecwid-redirect-404-helper' );
+					? __( 'Your Ecwid store is connected. Use Refresh to re-verify and reload redirect rules.', 'redirect-404-helper-for-ecwid' )
+					: __( 'Your Ecwid store was detected. Click Connect to verify and start using it.', 'redirect-404-helper-for-ecwid' );
 				break;
 		}
 
@@ -327,12 +327,12 @@ final class SettingsPage {
 	 */
 	private function render_actions( EcwidPluginDiscovery $discovery, bool $connected ): void {
 		if ( $discovery->is_ready() && ! $connected ) {
-			$this->render_action_form( self::ACTION_CONNECT, __( 'Connect', 'ecwid-redirect-404-helper' ), 'primary' );
+			$this->render_action_form( self::ACTION_CONNECT, __( 'Connect', 'redirect-404-helper-for-ecwid' ), 'primary' );
 		}
 
 		if ( $connected ) {
-			$this->render_action_form( self::ACTION_REFRESH, __( 'Refresh', 'ecwid-redirect-404-helper' ), 'primary' );
-			$this->render_action_form( self::ACTION_DISCONNECT, __( 'Disconnect', 'ecwid-redirect-404-helper' ), 'secondary' );
+			$this->render_action_form( self::ACTION_REFRESH, __( 'Refresh', 'redirect-404-helper-for-ecwid' ), 'primary' );
+			$this->render_action_form( self::ACTION_DISCONNECT, __( 'Disconnect', 'redirect-404-helper-for-ecwid' ), 'secondary' );
 		}
 	}
 
@@ -389,19 +389,19 @@ final class SettingsPage {
 	private function notice_message( string $code ): array {
 		switch ( $code ) {
 			case 'connected':
-				return array( 'success', __( 'Connected to your Ecwid store.', 'ecwid-redirect-404-helper' ) );
+				return array( 'success', __( 'Connected to your Ecwid store.', 'redirect-404-helper-for-ecwid' ) );
 			case 'refreshed':
-				return array( 'success', __( 'Connection re-verified and redirect rules refreshed.', 'ecwid-redirect-404-helper' ) );
+				return array( 'success', __( 'Connection re-verified and redirect rules refreshed.', 'redirect-404-helper-for-ecwid' ) );
 			case 'disconnected':
-				return array( 'success', __( 'Disconnected from your Ecwid store.', 'ecwid-redirect-404-helper' ) );
+				return array( 'success', __( 'Disconnected from your Ecwid store.', 'redirect-404-helper-for-ecwid' ) );
 			case 'not-ready':
-				return array( 'warning', __( 'Your Ecwid store is not fully configured yet.', 'ecwid-redirect-404-helper' ) );
+				return array( 'warning', __( 'Your Ecwid store is not fully configured yet.', 'redirect-404-helper-for-ecwid' ) );
 			case 'verify-' . ConnectionVerifier::BACKEND_UNREACHABLE:
-				return array( 'error', __( 'The redirect service could not be reached. Try again shortly.', 'ecwid-redirect-404-helper' ) );
+				return array( 'error', __( 'The redirect service could not be reached. Try again shortly.', 'redirect-404-helper-for-ecwid' ) );
 			case 'verify-' . ConnectionVerifier::AUTH_FAILED:
-				return array( 'error', __( 'The Ecwid storefront token was rejected. Reconnect your store in the Ecwid plugin.', 'ecwid-redirect-404-helper' ) );
+				return array( 'error', __( 'The Ecwid storefront token was rejected. Reconnect your store in the Ecwid plugin.', 'redirect-404-helper-for-ecwid' ) );
 			case 'verify-' . ConnectionVerifier::CATALOG_UNREACHABLE:
-				return array( 'error', __( 'The Ecwid catalog could not be reached to confirm the connection. Try again shortly.', 'ecwid-redirect-404-helper' ) );
+				return array( 'error', __( 'The Ecwid catalog could not be reached to confirm the connection. Try again shortly.', 'redirect-404-helper-for-ecwid' ) );
 			default:
 				return array( '', '' );
 		}

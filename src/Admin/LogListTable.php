@@ -75,13 +75,13 @@ final class LogListTable extends \WP_List_Table {
 	public function get_columns(): array {
 		return array(
 			'cb'             => '<input type="checkbox" />',
-			'url_path'       => __( 'URL', 'ecwid-redirect-404-helper' ),
-			'classification' => __( 'Type', 'ecwid-redirect-404-helper' ),
-			'verdict'        => __( 'Catalog', 'ecwid-redirect-404-helper' ),
-			'hit_count'      => __( 'Hits', 'ecwid-redirect-404-helper' ),
-			'referrer'       => __( 'Last referrer', 'ecwid-redirect-404-helper' ),
-			'status'         => __( 'Status', 'ecwid-redirect-404-helper' ),
-			'last_seen'      => __( 'Last seen', 'ecwid-redirect-404-helper' ),
+			'url_path'       => __( 'URL', 'redirect-404-helper-for-ecwid' ),
+			'classification' => __( 'Type', 'redirect-404-helper-for-ecwid' ),
+			'verdict'        => __( 'Catalog', 'redirect-404-helper-for-ecwid' ),
+			'hit_count'      => __( 'Hits', 'redirect-404-helper-for-ecwid' ),
+			'referrer'       => __( 'Last referrer', 'redirect-404-helper-for-ecwid' ),
+			'status'         => __( 'Status', 'redirect-404-helper-for-ecwid' ),
+			'last_seen'      => __( 'Last seen', 'redirect-404-helper-for-ecwid' ),
 		);
 	}
 
@@ -106,7 +106,7 @@ final class LogListTable extends \WP_List_Table {
 	 */
 	protected function get_bulk_actions(): array {
 		return array(
-			'delete' => __( 'Delete', 'ecwid-redirect-404-helper' ),
+			'delete' => __( 'Delete', 'redirect-404-helper-for-ecwid' ),
 		);
 	}
 
@@ -151,7 +151,7 @@ final class LogListTable extends \WP_List_Table {
 		echo '<div class="alignleft actions">';
 
 		echo '<select name="classification">';
-		echo '<option value="">' . esc_html__( 'All types', 'ecwid-redirect-404-helper' ) . '</option>';
+		echo '<option value="">' . esc_html__( 'All types', 'redirect-404-helper-for-ecwid' ) . '</option>';
 		foreach ( self::classification_labels() as $value => $label ) {
 			printf(
 				'<option value="%1$s"%2$s>%3$s</option>',
@@ -163,7 +163,7 @@ final class LogListTable extends \WP_List_Table {
 		echo '</select>';
 
 		echo '<select name="verdict">';
-		echo '<option value="">' . esc_html__( 'All catalog verdicts', 'ecwid-redirect-404-helper' ) . '</option>';
+		echo '<option value="">' . esc_html__( 'All catalog verdicts', 'redirect-404-helper-for-ecwid' ) . '</option>';
 		foreach ( self::verdict_labels() as $value => $label ) {
 			printf(
 				'<option value="%1$s"%2$s>%3$s</option>',
@@ -175,7 +175,7 @@ final class LogListTable extends \WP_List_Table {
 		echo '</select>';
 
 		echo '<select name="status">';
-		echo '<option value="">' . esc_html__( 'All statuses', 'ecwid-redirect-404-helper' ) . '</option>';
+		echo '<option value="">' . esc_html__( 'All statuses', 'redirect-404-helper-for-ecwid' ) . '</option>';
 		foreach ( self::status_labels() as $value => $label ) {
 			printf(
 				'<option value="%1$s"%2$s>%3$s</option>',
@@ -186,7 +186,7 @@ final class LogListTable extends \WP_List_Table {
 		}
 		echo '</select>';
 
-		submit_button( __( 'Filter', 'ecwid-redirect-404-helper' ), '', 'filter_action', false );
+		submit_button( __( 'Filter', 'redirect-404-helper-for-ecwid' ), '', 'filter_action', false );
 
 		echo '</div>';
 	}
@@ -197,7 +197,7 @@ final class LogListTable extends \WP_List_Table {
 	 * @return void
 	 */
 	public function no_items(): void {
-		esc_html_e( 'No 404s logged yet. They will appear here as visitors hit missing URLs.', 'ecwid-redirect-404-helper' );
+		esc_html_e( 'No 404s logged yet. They will appear here as visitors hit missing URLs.', 'redirect-404-helper-for-ecwid' );
 	}
 
 	/**
@@ -244,12 +244,12 @@ final class LogListTable extends \WP_List_Table {
 			'create-redirect' => sprintf(
 				'<a href="%s">%s</a>',
 				esc_url( $create_url ),
-				esc_html__( 'Create redirect', 'ecwid-redirect-404-helper' )
+				esc_html__( 'Create redirect', 'redirect-404-helper-for-ecwid' )
 			),
 			'delete'          => sprintf(
 				'<a href="%s">%s</a>',
 				esc_url( $delete_url ),
-				esc_html__( 'Delete', 'ecwid-redirect-404-helper' )
+				esc_html__( 'Delete', 'redirect-404-helper-for-ecwid' )
 			),
 		);
 
@@ -344,9 +344,9 @@ final class LogListTable extends \WP_List_Table {
 	 */
 	public static function classification_labels(): array {
 		return array(
-			UrlClassifier::TYPE_PRODUCT  => __( 'Ecwid product', 'ecwid-redirect-404-helper' ),
-			UrlClassifier::TYPE_CATEGORY => __( 'Ecwid category', 'ecwid-redirect-404-helper' ),
-			UrlClassifier::TYPE_WP_PAGE  => __( 'WP page', 'ecwid-redirect-404-helper' ),
+			UrlClassifier::TYPE_PRODUCT  => __( 'Ecwid product', 'redirect-404-helper-for-ecwid' ),
+			UrlClassifier::TYPE_CATEGORY => __( 'Ecwid category', 'redirect-404-helper-for-ecwid' ),
+			UrlClassifier::TYPE_WP_PAGE  => __( 'WP page', 'redirect-404-helper-for-ecwid' ),
 		);
 	}
 
@@ -357,8 +357,8 @@ final class LogListTable extends \WP_List_Table {
 	 */
 	public static function status_labels(): array {
 		return array(
-			NotFoundLog::STATUS_NEW        => __( 'New', 'ecwid-redirect-404-helper' ),
-			NotFoundLog::STATUS_REDIRECTED => __( 'Redirected', 'ecwid-redirect-404-helper' ),
+			NotFoundLog::STATUS_NEW        => __( 'New', 'redirect-404-helper-for-ecwid' ),
+			NotFoundLog::STATUS_REDIRECTED => __( 'Redirected', 'redirect-404-helper-for-ecwid' ),
 		);
 	}
 
@@ -369,10 +369,10 @@ final class LogListTable extends \WP_List_Table {
 	 */
 	public static function verdict_labels(): array {
 		return array(
-			VerdictChecker::VERDICT_IN_CATALOG     => __( 'In catalog — broken link', 'ecwid-redirect-404-helper' ),
-			VerdictChecker::VERDICT_DELETED        => __( 'Deleted', 'ecwid-redirect-404-helper' ),
-			VerdictChecker::VERDICT_NEVER_EXISTED  => __( 'Never existed', 'ecwid-redirect-404-helper' ),
-			VerdictChecker::VERDICT_NOT_IN_CATALOG => __( 'Not in catalog', 'ecwid-redirect-404-helper' ),
+			VerdictChecker::VERDICT_IN_CATALOG     => __( 'In catalog — broken link', 'redirect-404-helper-for-ecwid' ),
+			VerdictChecker::VERDICT_DELETED        => __( 'Deleted', 'redirect-404-helper-for-ecwid' ),
+			VerdictChecker::VERDICT_NEVER_EXISTED  => __( 'Never existed', 'redirect-404-helper-for-ecwid' ),
+			VerdictChecker::VERDICT_NOT_IN_CATALOG => __( 'Not in catalog', 'redirect-404-helper-for-ecwid' ),
 		);
 	}
 
@@ -383,10 +383,10 @@ final class LogListTable extends \WP_List_Table {
 	 */
 	public static function verdict_titles(): array {
 		return array(
-			VerdictChecker::VERDICT_IN_CATALOG     => __( 'This product/category is live in your Ecwid catalog — the URL or link pointing here is what is broken.', 'ecwid-redirect-404-helper' ),
-			VerdictChecker::VERDICT_DELETED        => __( 'This item was deleted from your Ecwid catalog (deletion on record in Redirect & 404 Manager).', 'ecwid-redirect-404-helper' ),
-			VerdictChecker::VERDICT_NEVER_EXISTED  => __( 'No item with this id is on record — most likely a mistyped or fabricated link. (Items deleted before Redirect & 404 Manager was installed also show here.)', 'ecwid-redirect-404-helper' ),
-			VerdictChecker::VERDICT_NOT_IN_CATALOG => __( 'Not in your Ecwid catalog. Install the Redirect & 404 Manager app to tell deleted items apart from mistyped links.', 'ecwid-redirect-404-helper' ),
+			VerdictChecker::VERDICT_IN_CATALOG     => __( 'This product/category is live in your Ecwid catalog — the URL or link pointing here is what is broken.', 'redirect-404-helper-for-ecwid' ),
+			VerdictChecker::VERDICT_DELETED        => __( 'This item was deleted from your Ecwid catalog (deletion on record in Redirect & 404 Manager).', 'redirect-404-helper-for-ecwid' ),
+			VerdictChecker::VERDICT_NEVER_EXISTED  => __( 'No item with this id is on record — most likely a mistyped or fabricated link. (Items deleted before Redirect & 404 Manager was installed also show here.)', 'redirect-404-helper-for-ecwid' ),
+			VerdictChecker::VERDICT_NOT_IN_CATALOG => __( 'Not in your Ecwid catalog. Install the Redirect & 404 Manager app to tell deleted items apart from mistyped links.', 'redirect-404-helper-for-ecwid' ),
 		);
 	}
 }

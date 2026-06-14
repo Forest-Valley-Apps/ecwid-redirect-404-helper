@@ -1,5 +1,5 @@
 {
-    "name": "fv/ecwid-redirect-404-helper",
+    "name": "fv/redirect-404-helper-for-ecwid",
     "description": "Ecwid-aware 404 logging and redirects for WordPress.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",

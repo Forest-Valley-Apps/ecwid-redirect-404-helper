@@ -61,11 +61,11 @@ final class RedirectListTable extends \WP_List_Table {
 	public function get_columns(): array {
 		return array(
 			'cb'          => '<input type="checkbox" />',
-			'source'      => __( 'Source', 'ecwid-redirect-404-helper' ),
-			'destination' => __( 'Destination', 'ecwid-redirect-404-helper' ),
-			'active'      => __( 'Status', 'ecwid-redirect-404-helper' ),
-			'hit_count'   => __( 'Hits', 'ecwid-redirect-404-helper' ),
-			'last_hit'    => __( 'Last used', 'ecwid-redirect-404-helper' ),
+			'source'      => __( 'Source', 'redirect-404-helper-for-ecwid' ),
+			'destination' => __( 'Destination', 'redirect-404-helper-for-ecwid' ),
+			'active'      => __( 'Status', 'redirect-404-helper-for-ecwid' ),
+			'hit_count'   => __( 'Hits', 'redirect-404-helper-for-ecwid' ),
+			'last_hit'    => __( 'Last used', 'redirect-404-helper-for-ecwid' ),
 		);
 	}
 
@@ -76,7 +76,7 @@ final class RedirectListTable extends \WP_List_Table {
 	 */
 	protected function get_bulk_actions(): array {
 		return array(
-			'delete' => __( 'Delete', 'ecwid-redirect-404-helper' ),
+			'delete' => __( 'Delete', 'redirect-404-helper-for-ecwid' ),
 		);
 	}
 
@@ -106,7 +106,7 @@ final class RedirectListTable extends \WP_List_Table {
 	 * @return void
 	 */
 	public function no_items(): void {
-		esc_html_e( 'No redirects yet. Add one above, or create one from a logged 404.', 'ecwid-redirect-404-helper' );
+		esc_html_e( 'No redirects yet. Add one above, or create one from a logged 404.', 'redirect-404-helper-for-ecwid' );
 	}
 
 	/**
@@ -151,13 +151,13 @@ final class RedirectListTable extends \WP_List_Table {
 				'<a href="%s">%s</a>',
 				esc_url( $toggle_url ),
 				$active
-					? esc_html__( 'Disable', 'ecwid-redirect-404-helper' )
-					: esc_html__( 'Enable', 'ecwid-redirect-404-helper' )
+					? esc_html__( 'Disable', 'redirect-404-helper-for-ecwid' )
+					: esc_html__( 'Enable', 'redirect-404-helper-for-ecwid' )
 			),
 			'delete' => sprintf(
 				'<a href="%s">%s</a>',
 				esc_url( $delete_url ),
-				esc_html__( 'Delete', 'ecwid-redirect-404-helper' )
+				esc_html__( 'Delete', 'redirect-404-helper-for-ecwid' )
 			),
 		);
 
@@ -182,8 +182,8 @@ final class RedirectListTable extends \WP_List_Table {
 	 */
 	protected function column_active( $item ): string {
 		return (int) $item['active'] > 0
-			? esc_html__( 'Active', 'ecwid-redirect-404-helper' )
-			: esc_html__( 'Disabled', 'ecwid-redirect-404-helper' );
+			? esc_html__( 'Active', 'redirect-404-helper-for-ecwid' )
+			: esc_html__( 'Disabled', 'redirect-404-helper-for-ecwid' );
 	}
 
 	/**

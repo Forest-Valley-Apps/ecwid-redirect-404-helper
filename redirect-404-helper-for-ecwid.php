@@ -10,7 +10,7 @@
  * Author URI:        https://apps.fv.dev/
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       ecwid-redirect-404-helper
+ * Text Domain:       redirect-404-helper-for-ecwid
  * Domain Path:       /languages
  *
  * @package FV\WPEcwidRedirectHelper

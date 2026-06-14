@@ -1,0 +1,35 @@
+# Files and directories excluded from the distributable plugin zip.
+# Consumed by `wp dist-archive` (WP-CLI) at release time, and mirrored by the
+# repo's local packaging step.
+#
+# Everything listed here is development-only. The shipped plugin needs none of
+# it: runtime class loading is a hand-rolled PSR-4 autoloader (see the main
+# plugin file), so there is no Composer `vendor/` directory to ship.
+
+# Version control / CI / local dev env
+/.git
+/.github
+/.gitignore
+/.distignore
+/.wp-env.json
+
+# Build / dependency manifests (dev tooling only)
+/composer.json
+/composer.lock
+/package.json
+/package-lock.json
+/node_modules
+/vendor
+
+# Lint / test configuration and the test suite
+/phpcs.xml.dist
+/phpunit.xml.dist
+/phpunit-integration.xml.dist
+/tests
+
+# Placeholder kept only so the empty languages/ dir survives in git
+/languages/.gitkeep
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

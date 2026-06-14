@@ -120,7 +120,7 @@ final class LogPage {
 		}
 
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to do this.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		$handlers[ $action ]();
@@ -205,7 +205,7 @@ final class LogPage {
 	 */
 	public function handle_export(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to do this.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		check_admin_referer( self::ACTION_EXPORT );
@@ -233,7 +233,7 @@ final class LogPage {
 	 */
 	public function render(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		$table = new LogListTable( $this->log, self::current_query_args() );
@@ -247,8 +247,8 @@ final class LogPage {
 		$this->print_styles();
 
 		echo '<div class="wrap">';
-		echo '<h1 class="wp-heading-inline">' . esc_html__( '404 Log', 'ecwid-redirect-404-helper' ) . '</h1>';
-		echo ' <a href="' . esc_url( $export_url ) . '" class="page-title-action">' . esc_html__( 'Export CSV', 'ecwid-redirect-404-helper' ) . '</a>';
+		echo '<h1 class="wp-heading-inline">' . esc_html__( '404 Log', 'redirect-404-helper-for-ecwid' ) . '</h1>';
+		echo ' <a href="' . esc_url( $export_url ) . '" class="page-title-action">' . esc_html__( 'Export CSV', 'redirect-404-helper-for-ecwid' ) . '</a>';
 		$this->render_check_catalog_button();
 		echo '<hr class="wp-header-end" />';
 
@@ -258,7 +258,7 @@ final class LogPage {
 
 		echo '<form method="get">';
 		echo '<input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '" />';
-		$table->search_box( __( 'Search URLs', 'ecwid-redirect-404-helper' ), 'fv-erh-404' );
+		$table->search_box( __( 'Search URLs', 'redirect-404-helper-for-ecwid' ), 'fv-erh-404' );
 		$table->display();
 		echo '</form>';
 
@@ -364,8 +364,8 @@ final class LogPage {
 
 		$label = $pending > 0
 			/* translators: %d: number of Ecwid entities awaiting a catalog check. */
-			? sprintf( __( 'Check catalog (%d)', 'ecwid-redirect-404-helper' ), $pending )
-			: __( 'Check catalog', 'ecwid-redirect-404-helper' );
+			? sprintf( __( 'Check catalog (%d)', 'redirect-404-helper-for-ecwid' ), $pending )
+			: __( 'Check catalog', 'redirect-404-helper-for-ecwid' );
 
 		echo ' <a href="' . esc_url( $url ) . '" class="page-title-action">' . esc_html( $label ) . '</a>';
 	}
@@ -390,31 +390,31 @@ final class LogPage {
 			$this->collisions->schedule_scan();
 
 			echo '<p class="fv-erh-collision-allclear">'
-				. esc_html__( 'Slug check: scan pending — results appear after the next background run.', 'ecwid-redirect-404-helper' )
-				. ' <a href="' . esc_url( $rescan_url ) . '">' . esc_html__( 'Scan now', 'ecwid-redirect-404-helper' ) . '</a></p>';
+				. esc_html__( 'Slug check: scan pending — results appear after the next background run.', 'redirect-404-helper-for-ecwid' )
+				. ' <a href="' . esc_url( $rescan_url ) . '">' . esc_html__( 'Scan now', 'redirect-404-helper-for-ecwid' ) . '</a></p>';
 
 			return;
 		}
 
 		if ( array() === $collisions ) {
 			echo '<p class="fv-erh-collision-allclear">'
-				. esc_html__( 'Slug check: no page slugs collide with Ecwid URL patterns.', 'ecwid-redirect-404-helper' )
-				. ' <a href="' . esc_url( $rescan_url ) . '">' . esc_html__( 'Rescan', 'ecwid-redirect-404-helper' ) . '</a></p>';
+				. esc_html__( 'Slug check: no page slugs collide with Ecwid URL patterns.', 'redirect-404-helper-for-ecwid' )
+				. ' <a href="' . esc_url( $rescan_url ) . '">' . esc_html__( 'Rescan', 'redirect-404-helper-for-ecwid' ) . '</a></p>';
 
 			return;
 		}
 
 		echo '<div class="fv-erh-collision-panel">';
-		echo '<h2>' . esc_html__( 'False-404 warning: slug collisions with Ecwid', 'ecwid-redirect-404-helper' ) . '</h2>';
+		echo '<h2>' . esc_html__( 'False-404 warning: slug collisions with Ecwid', 'redirect-404-helper-for-ecwid' ) . '</h2>';
 		echo '<p>'
-			. esc_html__( 'These published pages have slugs ending in Ecwid\'s product/category URL pattern (-p123 / -c123). The Ecwid store widget hijacks such URLs and renders a "not found" store page instead of your content — visitors see a 404 even though the page exists. Rename the slug (e.g. add a word after the number) to fix it.', 'ecwid-redirect-404-helper' )
+			. esc_html__( 'These published pages have slugs ending in Ecwid\'s product/category URL pattern (-p123 / -c123). The Ecwid store widget hijacks such URLs and renders a "not found" store page instead of your content — visitors see a 404 even though the page exists. Rename the slug (e.g. add a word after the number) to fix it.', 'redirect-404-helper-for-ecwid' )
 			. '</p>';
 
 		echo '<table class="widefat striped fv-erh-collision-table"><thead><tr>'
-			. '<th>' . esc_html__( 'Page', 'ecwid-redirect-404-helper' ) . '</th>'
-			. '<th>' . esc_html__( 'Slug', 'ecwid-redirect-404-helper' ) . '</th>'
-			. '<th>' . esc_html__( 'Type', 'ecwid-redirect-404-helper' ) . '</th>'
-			. '<th>' . esc_html__( 'Actions', 'ecwid-redirect-404-helper' ) . '</th>'
+			. '<th>' . esc_html__( 'Page', 'redirect-404-helper-for-ecwid' ) . '</th>'
+			. '<th>' . esc_html__( 'Slug', 'redirect-404-helper-for-ecwid' ) . '</th>'
+			. '<th>' . esc_html__( 'Type', 'redirect-404-helper-for-ecwid' ) . '</th>'
+			. '<th>' . esc_html__( 'Actions', 'redirect-404-helper-for-ecwid' ) . '</th>'
 			. '</tr></thead><tbody>';
 
 		foreach ( $collisions as $collision ) {
@@ -427,17 +427,17 @@ final class LogPage {
 			echo '<td>' . esc_html( $collision['type'] ) . '</td>';
 			echo '<td>';
 			if ( is_string( $edit_link ) && '' !== $edit_link ) {
-				echo '<a href="' . esc_url( $edit_link ) . '">' . esc_html__( 'Edit slug', 'ecwid-redirect-404-helper' ) . '</a>';
+				echo '<a href="' . esc_url( $edit_link ) . '">' . esc_html__( 'Edit slug', 'redirect-404-helper-for-ecwid' ) . '</a>';
 			}
 			if ( is_string( $view_link ) && '' !== $view_link ) {
-				echo ' | <a href="' . esc_url( $view_link ) . '" target="_blank" rel="noopener">' . esc_html__( 'View', 'ecwid-redirect-404-helper' ) . '</a>';
+				echo ' | <a href="' . esc_url( $view_link ) . '" target="_blank" rel="noopener">' . esc_html__( 'View', 'redirect-404-helper-for-ecwid' ) . '</a>';
 			}
 			echo '</td>';
 			echo '</tr>';
 		}
 
 		echo '</tbody></table>';
-		echo '<p><a href="' . esc_url( $rescan_url ) . '" class="button">' . esc_html__( 'Rescan now', 'ecwid-redirect-404-helper' ) . '</a></p>';
+		echo '<p><a href="' . esc_url( $rescan_url ) . '" class="button">' . esc_html__( 'Rescan now', 'redirect-404-helper-for-ecwid' ) . '</a></p>';
 		echo '</div>';
 	}
 
@@ -456,11 +456,11 @@ final class LogPage {
 		if ( $this->log->count( array( 'verdict' => VerdictChecker::VERDICT_DELETED ) ) > 0 ) {
 			$this->cta->render(
 				'log-deleted-redirects',
-				__( 'Deleted products are still 404ing', 'ecwid-redirect-404-helper' ),
-				__( 'Some of these 404s are products or categories you deleted. The Redirect & 404 Manager app redirects a deleted item automatically — to its parent category or your homepage — the moment it is removed, so you never hand-fix them.', 'ecwid-redirect-404-helper' ),
+				__( 'Deleted products are still 404ing', 'redirect-404-helper-for-ecwid' ),
+				__( 'Some of these 404s are products or categories you deleted. The Redirect & 404 Manager app redirects a deleted item automatically — to its parent category or your homepage — the moment it is removed, so you never hand-fix them.', 'redirect-404-helper-for-ecwid' ),
 				array(
 					array(
-						'label'  => __( 'Automate deleted redirects', 'ecwid-redirect-404-helper' ),
+						'label'  => __( 'Automate deleted redirects', 'redirect-404-helper-for-ecwid' ),
 						'target' => DeepLink::TARGET_DELETED_REDIRECTS,
 					),
 				)
@@ -477,11 +477,11 @@ final class LogPage {
 		if ( $has_ecwid_404s ) {
 			$this->cta->render(
 				'log-storefront-layer',
-				__( 'Some 404s happen inside the Ecwid storefront', 'ecwid-redirect-404-helper' ),
-				__( 'These product and category 404s occur inside the embedded store, in the visitor\'s browser — they never reach WordPress, so a WordPress-layer redirect cannot catch them. The Redirect & 404 Manager app redirects at the storefront layer, which is the only place these can be fixed.', 'ecwid-redirect-404-helper' ),
+				__( 'Some 404s happen inside the Ecwid storefront', 'redirect-404-helper-for-ecwid' ),
+				__( 'These product and category 404s occur inside the embedded store, in the visitor\'s browser — they never reach WordPress, so a WordPress-layer redirect cannot catch them. The Redirect & 404 Manager app redirects at the storefront layer, which is the only place these can be fixed.', 'redirect-404-helper-for-ecwid' ),
 				array(
 					array(
-						'label'  => __( 'Fix storefront 404s in the app', 'ecwid-redirect-404-helper' ),
+						'label'  => __( 'Fix storefront 404s in the app', 'redirect-404-helper-for-ecwid' ),
 						'target' => DeepLink::TARGET_STOREFRONT_LAYER,
 					),
 				)
@@ -502,7 +502,7 @@ final class LogPage {
 
 		switch ( $code ) {
 			case 'log-deleted':
-				$this->print_notice( 'success', __( 'Selected 404 entries deleted.', 'ecwid-redirect-404-helper' ) );
+				$this->print_notice( 'success', __( 'Selected 404 entries deleted.', 'redirect-404-helper-for-ecwid' ) );
 				break;
 
 			case 'verdicts-checked':
@@ -513,7 +513,7 @@ final class LogPage {
 					'success',
 					sprintf(
 						/* translators: 1: entities checked this run, 2: entities still pending. */
-						__( 'Catalog check complete: %1$d entities checked, %2$d still pending.', 'ecwid-redirect-404-helper' ),
+						__( 'Catalog check complete: %1$d entities checked, %2$d still pending.', 'redirect-404-helper-for-ecwid' ),
 						$checked,
 						$left
 					)
@@ -521,11 +521,11 @@ final class LogPage {
 				break;
 
 			case 'verdicts-unavailable':
-				$this->print_notice( 'warning', __( 'Catalog check unavailable: connect your Ecwid store first (Settings).', 'ecwid-redirect-404-helper' ) );
+				$this->print_notice( 'warning', __( 'Catalog check unavailable: connect your Ecwid store first (Settings).', 'redirect-404-helper-for-ecwid' ) );
 				break;
 
 			case 'collisions-rescanned':
-				$this->print_notice( 'success', __( 'Slug collision scan refreshed.', 'ecwid-redirect-404-helper' ) );
+				$this->print_notice( 'success', __( 'Slug collision scan refreshed.', 'redirect-404-helper-for-ecwid' ) );
 				break;
 		}
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended

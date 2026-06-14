@@ -55,7 +55,7 @@ final class UninstallTest extends WpdbTestCase {
 	 */
 	private function run_uninstall(): void {
 		if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
-			define( 'WP_UNINSTALL_PLUGIN', 'ecwid-redirect-404-helper/ecwid-redirect-404-helper.php' );
+			define( 'WP_UNINSTALL_PLUGIN', 'redirect-404-helper-for-ecwid/redirect-404-helper-for-ecwid.php' );
 		}
 
 		if ( \function_exists( 'fv_erh_uninstall' ) ) {

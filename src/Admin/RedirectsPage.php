@@ -204,7 +204,7 @@ final class RedirectsPage {
 		}
 
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to do this.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		check_admin_referer( 'bulk-fv-erh-redirects' );
@@ -226,11 +226,11 @@ final class RedirectsPage {
 	 */
 	public function render(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		echo '<div class="wrap">';
-		echo '<h1>' . esc_html__( 'Redirects', 'ecwid-redirect-404-helper' ) . '</h1>';
+		echo '<h1>' . esc_html__( 'Redirects', 'redirect-404-helper-for-ecwid' ) . '</h1>';
 
 		$this->render_notice();
 		$this->render_scope_note();
@@ -261,15 +261,15 @@ final class RedirectsPage {
 	private function render_upgrade_cta(): void {
 		$this->cta->render(
 			'redirects-bulk-migration',
-			__( 'Migrating a store, or fixing many URLs at once?', 'ecwid-redirect-404-helper' ),
-			__( 'These redirects are added one at a time, by hand. The Redirect & 404 Manager app maps old URLs to new ones in bulk and imports a migration map from Shopify, WooCommerce, or BigCommerce — the same work, without the per-URL effort.', 'ecwid-redirect-404-helper' ),
+			__( 'Migrating a store, or fixing many URLs at once?', 'redirect-404-helper-for-ecwid' ),
+			__( 'These redirects are added one at a time, by hand. The Redirect & 404 Manager app maps old URLs to new ones in bulk and imports a migration map from Shopify, WooCommerce, or BigCommerce — the same work, without the per-URL effort.', 'redirect-404-helper-for-ecwid' ),
 			array(
 				array(
-					'label'  => __( 'Bulk-map URLs in the app', 'ecwid-redirect-404-helper' ),
+					'label'  => __( 'Bulk-map URLs in the app', 'redirect-404-helper-for-ecwid' ),
 					'target' => DeepLink::TARGET_BULK_MAPPING,
 				),
 				array(
-					'label'  => __( 'Import a migration', 'ecwid-redirect-404-helper' ),
+					'label'  => __( 'Import a migration', 'redirect-404-helper-for-ecwid' ),
 					'target' => DeepLink::TARGET_MIGRATION_IMPORT,
 				),
 			)
@@ -284,7 +284,7 @@ final class RedirectsPage {
 	 */
 	private function guard( string $action ): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to do this.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		check_admin_referer( $action );
@@ -323,7 +323,7 @@ final class RedirectsPage {
 		echo '<div class="notice notice-info inline"><p>';
 		echo esc_html__(
 			'These are WordPress-layer redirects: the server answers with an HTTP 301 for any URL on this site that would otherwise be a 404. They cannot redirect between pages inside the embedded Ecwid storefront — those navigations happen in the visitor\'s browser and never reach WordPress. Storefront-layer redirects are what the Redirect & 404 Manager app inside Ecwid provides.',
-			'ecwid-redirect-404-helper'
+			'redirect-404-helper-for-ecwid'
 		);
 		echo '</p></div>';
 	}
@@ -339,26 +339,26 @@ final class RedirectsPage {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$prefill = isset( $_GET['source'] ) ? sanitize_text_field( wp_unslash( $_GET['source'] ) ) : '';
 
-		echo '<h2>' . esc_html__( 'Add redirect', 'ecwid-redirect-404-helper' ) . '</h2>';
+		echo '<h2>' . esc_html__( 'Add redirect', 'redirect-404-helper-for-ecwid' ) . '</h2>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_ADD );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_ADD ) . '" />';
 
 		echo '<table class="form-table" role="presentation"><tbody>';
 
-		echo '<tr><th scope="row"><label for="fv_source">' . esc_html__( 'Source path', 'ecwid-redirect-404-helper' ) . '</label></th><td>';
+		echo '<tr><th scope="row"><label for="fv_source">' . esc_html__( 'Source path', 'redirect-404-helper-for-ecwid' ) . '</label></th><td>';
 		echo '<input type="text" class="regular-text code" id="fv_source" name="fv_source" value="' . esc_attr( $prefill ) . '" placeholder="/old-page" required />';
-		echo '<p class="description">' . esc_html__( 'Wildcards: /old-blog/* forwards the matched part to a /new-blog/* destination; *-p123 matches any path ending in -p123.', 'ecwid-redirect-404-helper' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Wildcards: /old-blog/* forwards the matched part to a /new-blog/* destination; *-p123 matches any path ending in -p123.', 'redirect-404-helper-for-ecwid' ) . '</p>';
 		echo '</td></tr>';
 
-		echo '<tr><th scope="row"><label for="fv_destination">' . esc_html__( 'Destination', 'ecwid-redirect-404-helper' ) . '</label></th><td>';
+		echo '<tr><th scope="row"><label for="fv_destination">' . esc_html__( 'Destination', 'redirect-404-helper-for-ecwid' ) . '</label></th><td>';
 		echo '<input type="text" class="regular-text code" id="fv_destination" name="fv_destination" placeholder="/new-page" required />';
-		echo '<p class="description">' . esc_html__( 'A path on this site (/new-page) or a full URL (https://example.com/new-page).', 'ecwid-redirect-404-helper' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'A path on this site (/new-page) or a full URL (https://example.com/new-page).', 'redirect-404-helper-for-ecwid' ) . '</p>';
 		echo '</td></tr>';
 
 		echo '</tbody></table>';
 
-		submit_button( __( 'Add redirect', 'ecwid-redirect-404-helper' ) );
+		submit_button( __( 'Add redirect', 'redirect-404-helper-for-ecwid' ) );
 		echo '</form>';
 	}
 
@@ -397,19 +397,19 @@ final class RedirectsPage {
 	private function notice_message( string $code ): array {
 		switch ( $code ) {
 			case RedirectStore::ADDED:
-				return array( 'success', __( 'Redirect created. It will serve on the next request for the source URL.', 'ecwid-redirect-404-helper' ) );
+				return array( 'success', __( 'Redirect created. It will serve on the next request for the source URL.', 'redirect-404-helper-for-ecwid' ) );
 			case RedirectStore::INVALID_SOURCE:
-				return array( 'error', __( 'The source must be a path on this site, like /old-page or /old-section/*.', 'ecwid-redirect-404-helper' ) );
+				return array( 'error', __( 'The source must be a path on this site, like /old-page or /old-section/*.', 'redirect-404-helper-for-ecwid' ) );
 			case RedirectStore::INVALID_DESTINATION:
-				return array( 'error', __( 'The destination must be a path (/new-page) or a full http(s) URL, and must differ from the source.', 'ecwid-redirect-404-helper' ) );
+				return array( 'error', __( 'The destination must be a path (/new-page) or a full http(s) URL, and must differ from the source.', 'redirect-404-helper-for-ecwid' ) );
 			case RedirectStore::DUPLICATE:
-				return array( 'error', __( 'A redirect for this source already exists.', 'ecwid-redirect-404-helper' ) );
+				return array( 'error', __( 'A redirect for this source already exists.', 'redirect-404-helper-for-ecwid' ) );
 			case 'deleted':
-				return array( 'success', __( 'Redirect deleted.', 'ecwid-redirect-404-helper' ) );
+				return array( 'success', __( 'Redirect deleted.', 'redirect-404-helper-for-ecwid' ) );
 			case 'enabled':
-				return array( 'success', __( 'Redirect enabled.', 'ecwid-redirect-404-helper' ) );
+				return array( 'success', __( 'Redirect enabled.', 'redirect-404-helper-for-ecwid' ) );
 			case 'disabled':
-				return array( 'success', __( 'Redirect disabled.', 'ecwid-redirect-404-helper' ) );
+				return array( 'success', __( 'Redirect disabled.', 'redirect-404-helper-for-ecwid' ) );
 			default:
 				return array( '', '' );
 		}

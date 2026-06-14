@@ -104,7 +104,7 @@ final class CollisionNotice {
 		);
 
 		echo '<div class="notice notice-warning"><p><strong>'
-			. esc_html__( 'Redirect & 404 Helper for Ecwid:', 'ecwid-redirect-404-helper' )
+			. esc_html__( 'Redirect & 404 Helper for Ecwid:', 'redirect-404-helper-for-ecwid' )
 			. '</strong> ';
 
 		printf(
@@ -114,7 +114,7 @@ final class CollisionNotice {
 					'%1$d published page has a slug ending in an Ecwid product/category pattern (%2$s). The Ecwid store widget hijacks such URLs and shows a "not found" store page instead of your content.',
 					'%1$d published pages have slugs ending in an Ecwid product/category pattern (%2$s). The Ecwid store widget hijacks such URLs and shows a "not found" store page instead of your content.',
 					count( $collisions ),
-					'ecwid-redirect-404-helper'
+					'redirect-404-helper-for-ecwid'
 				)
 			),
 			(int) count( $collisions ),
@@ -122,9 +122,9 @@ final class CollisionNotice {
 		);
 
 		echo ' <a href="' . esc_url( $dashboard_url ) . '">'
-			. esc_html__( 'Review the affected pages', 'ecwid-redirect-404-helper' )
+			. esc_html__( 'Review the affected pages', 'redirect-404-helper-for-ecwid' )
 			. '</a> | <a href="' . esc_url( $dismiss_url ) . '">'
-			. esc_html__( 'Dismiss', 'ecwid-redirect-404-helper' )
+			. esc_html__( 'Dismiss', 'redirect-404-helper-for-ecwid' )
 			. '</a></p></div>';
 	}
 
@@ -135,7 +135,7 @@ final class CollisionNotice {
 	 */
 	public function handle_dismiss(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to do this.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to do this.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		check_admin_referer( self::ACTION_DISMISS );

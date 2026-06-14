@@ -84,24 +84,24 @@ final class UpgradePage {
 	 */
 	public function render(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'ecwid-redirect-404-helper' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'redirect-404-helper-for-ecwid' ) );
 		}
 
 		$this->print_style();
 
 		echo '<div class="wrap">';
-		echo '<h1>' . esc_html__( 'Upgrade — Powered by Redirect & 404 Manager', 'ecwid-redirect-404-helper' ) . '</h1>';
+		echo '<h1>' . esc_html__( 'Upgrade — Powered by Redirect & 404 Manager', 'redirect-404-helper-for-ecwid' ) . '</h1>';
 
 		echo '<p class="fv-erh-upgrade__lead">';
 		echo esc_html__(
 			'This free plugin finds, classifies, and lets you hand-fix 404s at the WordPress layer. The Redirect & 404 Manager app — which runs inside your Ecwid admin — automates that work in bulk and reaches the Ecwid storefront layer a WordPress plugin cannot. Each button below opens the app on the matching screen; nothing is changed on your store until you act there.',
-			'ecwid-redirect-404-helper'
+			'redirect-404-helper-for-ecwid'
 		);
 		echo '</p>';
 
 		if ( ! $this->deep_link()->can_deep_link() ) {
 			echo '<p class="fv-erh-upgrade__note">'
-				. esc_html__( 'Connect your Ecwid store (Settings) to deep-link straight into these screens. Until then the buttons open the app listing.', 'ecwid-redirect-404-helper' )
+				. esc_html__( 'Connect your Ecwid store (Settings) to deep-link straight into these screens. Until then the buttons open the app listing.', 'redirect-404-helper-for-ecwid' )
 				. '</p>';
 		}
 
@@ -123,27 +123,27 @@ final class UpgradePage {
 		return array(
 			array(
 				'target' => DeepLink::TARGET_BULK_MAPPING,
-				'title'  => __( 'Bulk old→new URL mapping', 'ecwid-redirect-404-helper' ),
-				'body'   => __( 'Map many old URLs to their new destinations at once, instead of adding redirects one at a time — the migration workhorse generic tools cannot do for Ecwid.', 'ecwid-redirect-404-helper' ),
-				'cta'    => __( 'Open bulk mapping', 'ecwid-redirect-404-helper' ),
+				'title'  => __( 'Bulk old→new URL mapping', 'redirect-404-helper-for-ecwid' ),
+				'body'   => __( 'Map many old URLs to their new destinations at once, instead of adding redirects one at a time — the migration workhorse generic tools cannot do for Ecwid.', 'redirect-404-helper-for-ecwid' ),
+				'cta'    => __( 'Open bulk mapping', 'redirect-404-helper-for-ecwid' ),
 			),
 			array(
 				'target' => DeepLink::TARGET_MIGRATION_IMPORT,
-				'title'  => __( 'Migration redirect import', 'ecwid-redirect-404-helper' ),
-				'body'   => __( 'Import a redirect map from a Shopify, WooCommerce, or BigCommerce migration so old store URLs keep working after the move to Ecwid.', 'ecwid-redirect-404-helper' ),
-				'cta'    => __( 'Open migration import', 'ecwid-redirect-404-helper' ),
+				'title'  => __( 'Migration redirect import', 'redirect-404-helper-for-ecwid' ),
+				'body'   => __( 'Import a redirect map from a Shopify, WooCommerce, or BigCommerce migration so old store URLs keep working after the move to Ecwid.', 'redirect-404-helper-for-ecwid' ),
+				'cta'    => __( 'Open migration import', 'redirect-404-helper-for-ecwid' ),
 			),
 			array(
 				'target' => DeepLink::TARGET_DELETED_REDIRECTS,
-				'title'  => __( 'Automatic deleted-product redirects', 'ecwid-redirect-404-helper' ),
-				'body'   => __( 'When a product or category is deleted, the app redirects its URL automatically (to the parent category or your homepage) — no manual rule per deletion.', 'ecwid-redirect-404-helper' ),
-				'cta'    => __( 'Open auto-redirects', 'ecwid-redirect-404-helper' ),
+				'title'  => __( 'Automatic deleted-product redirects', 'redirect-404-helper-for-ecwid' ),
+				'body'   => __( 'When a product or category is deleted, the app redirects its URL automatically (to the parent category or your homepage) — no manual rule per deletion.', 'redirect-404-helper-for-ecwid' ),
+				'cta'    => __( 'Open auto-redirects', 'redirect-404-helper-for-ecwid' ),
 			),
 			array(
 				'target' => DeepLink::TARGET_STOREFRONT_LAYER,
-				'title'  => __( 'Storefront-layer redirects', 'ecwid-redirect-404-helper' ),
-				'body'   => __( 'Catch 404s inside the embedded Ecwid storefront — the product/category sub-routes that happen in the browser and never reach WordPress, so WordPress-layer redirects cannot touch them.', 'ecwid-redirect-404-helper' ),
-				'cta'    => __( 'Open storefront redirects', 'ecwid-redirect-404-helper' ),
+				'title'  => __( 'Storefront-layer redirects', 'redirect-404-helper-for-ecwid' ),
+				'body'   => __( 'Catch 404s inside the embedded Ecwid storefront — the product/category sub-routes that happen in the browser and never reach WordPress, so WordPress-layer redirects cannot touch them.', 'redirect-404-helper-for-ecwid' ),
+				'cta'    => __( 'Open storefront redirects', 'redirect-404-helper-for-ecwid' ),
 			),
 		);
 	}
