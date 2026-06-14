@@ -55,13 +55,14 @@ storefront 404s and is honest about which layer fixes each one.
 
 = Free vs. paid =
 
-The line is **effort, not capability.** The free plugin is genuinely complete for
-hand-fixing a small store. When a job is better done automatically or in bulk —
-migration imports, bulk URL mapping, automatic deleted-product redirects, and the
-storefront-layer redirects a WordPress plugin fundamentally cannot perform — the
-plugin points you to its paid companion, the **Redirect & 404 Manager** app, which
-runs inside your Ecwid admin. The prompts are dismissible and stay dismissed; the
-plugin never changes your store.
+The line is **layer and scale.** The free plugin finds and classifies 404s on both
+URL layers and is genuinely complete for hand-fixing a small store at the WordPress
+layer — real 301s, one at a time. When a job needs the layer a WordPress plugin
+fundamentally cannot reach — storefront-layer redirects for Ecwid sub-routes — or
+needs scale (migration imports, bulk URL mapping, automatic deleted-product
+redirects), the plugin points you to its paid companion, the **Redirect & 404
+Manager** app, which runs inside your Ecwid admin. The prompts are dismissible and
+stay dismissed; the plugin never changes your store.
 
 == Installation ==
 

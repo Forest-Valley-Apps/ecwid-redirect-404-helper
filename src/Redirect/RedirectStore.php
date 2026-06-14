@@ -24,6 +24,12 @@ defined( 'ABSPATH' ) || exit;
  * {@see self::lookup_config()} can split exact/wildcard rules with a column
  * read instead of re-parsing patterns on every 404.
  *
+ * **Free-tier boundary (Scout -> Fixer):** this stores *single, manual WP-layer* 301
+ * rules only. Bulk mapping, migration import, automatic/scheduled redirects, and
+ * storefront-layer (Ecwid sub-route) redirects are the paid app's job and must never
+ * be added here -- that boundary is what keeps the plugin a Helper, not a replacement
+ * (see specs/helper-as-funnel-plan.md).
+ *
  * Direct queries against our own custom table are the point of this class, so
  * the WordPress.DB direct-query/caching sniffs are disabled file-wide instead
  * of per-line.
