@@ -48,6 +48,17 @@ final class DeepLinkTest extends TestCase {
 		$this->assertTrue( $link->can_deep_link() );
 	}
 
+	public function test_wp_reported_404s_is_a_recognised_target(): void {
+		$link = new DeepLink( self::STORE, self::SLUG, true, self::MARKET );
+
+		// The Ask-D target landed parent-side, so it must deep-link as itself
+		// rather than degrading to home.
+		$this->assertSame(
+			'https://my.ecwid.com/store/130416012#app:name=seo-redirect-manager&app_state=wp-reported-404s',
+			$link->url_for( DeepLink::TARGET_WP_REPORTED_404S )
+		);
+	}
+
 	public function test_unknown_target_degrades_to_home(): void {
 		$link = new DeepLink( self::STORE, self::SLUG, true, self::MARKET );
 

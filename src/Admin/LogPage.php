@@ -14,7 +14,6 @@ use FV\WPEcwidRedirectHelper\Log\CsvExporter;
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
 use FV\WPEcwidRedirectHelper\Upsell\DeepLink;
 use FV\WPEcwidRedirectHelper\Upsell\UpgradeCta;
-use FV\WPEcwidRedirectHelper\Url\UrlClassifier;
 use FV\WPEcwidRedirectHelper\Verdict\VerdictChecker;
 
 defined( 'ABSPATH' ) || exit;
@@ -442,49 +441,105 @@ final class LogPage {
 	/**
 	 * Surface the most relevant paid-tier CTA for what the log actually holds.
 	 *
-	 * At most one CTA, and only when the data earns it: deleted-product
-	 * redirects when there are "deleted" verdicts to act on, otherwise
-	 * storefront-layer redirects when there are Ecwid sub-route 404s the
-	 * WordPress layer cannot reach. With neither, nothing shows. Each is
-	 * dismissible (handled by {@see UpgradeCta}).
+	 * At most one CTA, and only when the data earns it — and it carries the
+	 * merchant's own count, because a specific, counted problem is what converts:
+	 * deleted-product redirects when there are "deleted" verdicts to act on,
+	 * otherwise the storefront-layer 404s the WordPress layer cannot reach. With
+	 * neither, nothing shows. Each is dismissible (handled by {@see UpgradeCta}).
+	 *
+	 * The deleted count short-circuits the storefront sum: when there are deleted
+	 * verdicts to act on, the (two) storefront COUNT queries are never run.
 	 *
 	 * @return void
 	 */
 	private function render_upgrade_cta(): void {
-		if ( $this->log->count( array( 'verdict' => VerdictChecker::VERDICT_DELETED ) ) > 0 ) {
-			$this->cta->render(
-				'log-deleted-redirects',
-				__( 'Deleted products are still 404ing', 'redirect-404-helper-for-ecwid' ),
-				__( 'Some of these 404s are products or categories you deleted. The Redirect & 404 Manager app redirects a deleted item automatically — to its parent category or your homepage — the moment it is removed, so you never hand-fix them.', 'redirect-404-helper-for-ecwid' ),
-				array(
+		$deleted = $this->log->count( array( 'verdict' => VerdictChecker::VERDICT_DELETED ) );
+
+		$spec = self::upgrade_cta_spec(
+			$deleted,
+			$deleted > 0 ? 0 : $this->storefront_layer_count()
+		);
+
+		if ( null === $spec ) {
+			return;
+		}
+
+		$this->cta->render( $spec['key'], $spec['heading'], $spec['body'], $spec['actions'] );
+	}
+
+	/**
+	 * How many logged 404s are storefront-layer (Ecwid product/category routes).
+	 *
+	 * @return int
+	 */
+	private function storefront_layer_count(): int {
+		$count = 0;
+		foreach ( RowLayer::storefront_classifications() as $classification ) {
+			$count += $this->log->count( array( 'classification' => $classification ) );
+		}
+
+		return $count;
+	}
+
+	/**
+	 * The counted CTA to show for the given log counts, or null for none.
+	 *
+	 * Pure (counts in, descriptor out) so the copy, count, and deep-link target
+	 * are unit-testable without a render. Deleted verdicts win over a plain
+	 * storefront count because the app can *automate* those specifically.
+	 *
+	 * @param int $deleted_count    Rows with a "deleted" catalog verdict.
+	 * @param int $storefront_count Storefront-layer rows (product + category).
+	 * @return array{key:string,heading:string,body:string,actions:array<int,array{label:string,target:string}>}|null
+	 */
+	public static function upgrade_cta_spec( int $deleted_count, int $storefront_count ): ?array {
+		if ( $deleted_count > 0 ) {
+			return array(
+				'key'     => 'log-deleted-redirects',
+				'heading' => sprintf(
+					/* translators: %d: number of deleted products/categories still returning 404s. */
+					_n(
+						'%d deleted product is still returning 404s',
+						'%d deleted products are still returning 404s',
+						$deleted_count,
+						'redirect-404-helper-for-ecwid'
+					),
+					$deleted_count
+				),
+				'body'    => __( 'These are products or categories you deleted. The Redirect & 404 Manager app redirects a deleted item automatically — to its parent category or your homepage — the moment it is removed, so you never hand-fix them.', 'redirect-404-helper-for-ecwid' ),
+				'actions' => array(
 					array(
 						'label'  => __( 'Automate deleted redirects', 'redirect-404-helper-for-ecwid' ),
 						'target' => DeepLink::TARGET_DELETED_REDIRECTS,
 					),
-				)
+				),
 			);
-
-			return;
 		}
 
-		// `||` short-circuits, so the category COUNT is skipped whenever the
-		// product COUNT already finds Ecwid 404s.
-		$has_ecwid_404s = $this->log->count( array( 'classification' => UrlClassifier::TYPE_PRODUCT ) ) > 0
-			|| $this->log->count( array( 'classification' => UrlClassifier::TYPE_CATEGORY ) ) > 0;
-
-		if ( $has_ecwid_404s ) {
-			$this->cta->render(
-				'log-storefront-layer',
-				__( 'Some 404s happen inside the Ecwid storefront', 'redirect-404-helper-for-ecwid' ),
-				__( 'These product and category 404s occur inside the embedded store, in the visitor\'s browser — they never reach WordPress, so a WordPress-layer redirect cannot catch them. The Redirect & 404 Manager app redirects at the storefront layer, which is the only place these can be fixed.', 'redirect-404-helper-for-ecwid' ),
-				array(
-					array(
-						'label'  => __( 'Fix storefront 404s in the app', 'redirect-404-helper-for-ecwid' ),
-						'target' => DeepLink::TARGET_STOREFRONT_LAYER,
+		if ( $storefront_count > 0 ) {
+			return array(
+				'key'     => 'log-storefront-layer',
+				'heading' => sprintf(
+					/* translators: %d: number of storefront-layer 404s WordPress cannot redirect. */
+					_n(
+						'You have %d storefront 404 WordPress cannot redirect',
+						'You have %d storefront 404s WordPress cannot redirect',
+						$storefront_count,
+						'redirect-404-helper-for-ecwid'
 					),
-				)
+					$storefront_count
+				),
+				'body'    => __( 'These product and category 404s happen inside the embedded store, in the visitor\'s browser — they never reach WordPress, so a WordPress-layer redirect cannot catch them. The Redirect & 404 Manager app redirects them at the storefront layer, the only place these can be fixed.', 'redirect-404-helper-for-ecwid' ),
+				'actions' => array(
+					array(
+						'label'  => __( 'Open them in the app', 'redirect-404-helper-for-ecwid' ),
+						'target' => DeepLink::TARGET_WP_REPORTED_404S,
+					),
+				),
 			);
 		}
+
+		return null;
 	}
 
 	/**

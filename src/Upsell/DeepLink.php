@@ -72,6 +72,15 @@ final class DeepLink {
 	public const TARGET_STOREFRONT_LAYER = 'storefront-layer';
 
 	/**
+	 * Target: the app's 404 list, filtered to this store's WordPress-reported
+	 * 404s — the landing for the counted "you have N storefront 404s" CTA
+	 * (parent-side Ask D, `docs/parent-product-tasks.md`).
+	 *
+	 * @var string
+	 */
+	public const TARGET_WP_REPORTED_404S = 'wp-reported-404s';
+
+	/**
 	 * Target: app home / dashboard (also the fallback for any unknown target).
 	 *
 	 * @var string
@@ -90,6 +99,7 @@ final class DeepLink {
 		self::TARGET_MIGRATION_IMPORT,
 		self::TARGET_DELETED_REDIRECTS,
 		self::TARGET_STOREFRONT_LAYER,
+		self::TARGET_WP_REPORTED_404S,
 		self::TARGET_HOME,
 	);
 

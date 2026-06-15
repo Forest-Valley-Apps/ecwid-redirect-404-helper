@@ -54,6 +54,16 @@ final class RowLayer {
 	public const LAYER_STOREFRONT = 'storefront';
 
 	/**
+	 * The classifications that are fixable only at the storefront layer: Ecwid
+	 * product/category sub-routes. Anything else is WordPress-layer.
+	 *
+	 * @return string[] {@see UrlClassifier} TYPE_* values.
+	 */
+	public static function storefront_classifications(): array {
+		return array( UrlClassifier::TYPE_PRODUCT, UrlClassifier::TYPE_CATEGORY );
+	}
+
+	/**
 	 * The layer a row with the given classification can be fixed at.
 	 *
 	 * Only Ecwid product/category routes are storefront-layer; anything else
@@ -64,9 +74,7 @@ final class RowLayer {
 	 * @return string Self::LAYER_WP or self::LAYER_STOREFRONT.
 	 */
 	public static function for_classification( string $classification ): string {
-		$storefront = array( UrlClassifier::TYPE_PRODUCT, UrlClassifier::TYPE_CATEGORY );
-
-		return in_array( $classification, $storefront, true )
+		return in_array( $classification, self::storefront_classifications(), true )
 			? self::LAYER_STOREFRONT
 			: self::LAYER_WP;
 	}

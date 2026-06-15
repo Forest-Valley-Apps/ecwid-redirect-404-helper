@@ -48,6 +48,15 @@ final class RowLayerTest extends TestCase {
 		$this->assertSame( RowLayer::LAYER_WP, RowLayer::for_classification( UrlClassifier::TYPE_WP_PAGE ) );
 	}
 
+	public function test_storefront_classifications_are_product_and_category(): void {
+		// The set the counted CTA sums over; pinned so it stays in lockstep with
+		// for_classification()'s notion of "storefront layer".
+		$this->assertSame(
+			array( UrlClassifier::TYPE_PRODUCT, UrlClassifier::TYPE_CATEGORY ),
+			RowLayer::storefront_classifications()
+		);
+	}
+
 	public function test_unknown_classification_defaults_to_wp_layer(): void {
 		// Conservative default: the free "Create redirect" still does something.
 		$this->assertSame( RowLayer::LAYER_WP, RowLayer::for_classification( '' ) );
