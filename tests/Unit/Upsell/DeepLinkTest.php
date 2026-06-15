@@ -104,14 +104,16 @@ final class DeepLinkTest extends TestCase {
 		);
 	}
 
-	public function test_source_path_is_appended_base64url_encoded(): void {
+	public function test_source_path_is_folded_into_app_state_base64url_encoded(): void {
 		$link = new DeepLink( self::STORE, self::SLUG, true, self::MARKET );
 
 		// base64url( '/store/blue-shirt-p123' ) — '+/' mapped to '-_', no padding.
 		$expected_src = rtrim( strtr( base64_encode( '/store/blue-shirt-p123' ), '+/', '-_' ), '=' );
 
+		// The source is folded into app_state behind a `~`, not a sibling `&src=`
+		// (Ecwid forwards only app_state to the app iframe).
 		$this->assertSame(
-			'https://my.ecwid.com/store/130416012#app:name=seo-redirect-manager&app_state=storefront-layer&src=' . $expected_src,
+			'https://my.ecwid.com/store/130416012#app:name=seo-redirect-manager&app_state=storefront-layer~' . $expected_src,
 			$link->url_for( DeepLink::TARGET_STOREFRONT_LAYER, '/store/blue-shirt-p123' )
 		);
 	}
@@ -123,9 +125,22 @@ final class DeepLinkTest extends TestCase {
 		// url-safe mapping ('-_') and padding strip are actually proven.
 		$url = $link->url_for( DeepLink::TARGET_STOREFRONT_LAYER, '/store/x>>>???' );
 
-		$this->assertStringContainsString( '&src=', $url );
-		$src = substr( $url, strpos( $url, '&src=' ) + 5 );
-		$this->assertDoesNotMatchRegularExpression( '~[+/=]~', $src );
+		// The folded source is everything after the `~` delimiter, which appears
+		// only as the app_state separator.
+		$this->assertStringContainsString( 'app_state=storefront-layer~', $url );
+		$src = substr( $url, strpos( $url, '~' ) + 1 );
+		$this->assertDoesNotMatchRegularExpression( '#[+/=]#', $src );
+	}
+
+	public function test_not_installed_listing_carries_no_source(): void {
+		// The App Market listing form has no app_state to fold a source into, so a
+		// source path must be ignored entirely (no `~`, no `&src=`).
+		$link = new DeepLink( self::STORE, self::SLUG, false, self::MARKET );
+
+		$this->assertSame(
+			'https://my.ecwid.com/store/130416012#apps:view=app&name=seo-redirect-manager',
+			$link->url_for( DeepLink::TARGET_STOREFRONT_LAYER, '/store/blue-shirt-p123' )
+		);
 	}
 
 	public function test_empty_source_falls_back_to_bare_target(): void {

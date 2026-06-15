@@ -31,11 +31,15 @@ defined( 'ABSPATH' ) || exit;
  * `seo-redirect-manager` on prod, `seo-redirect-manager-dev` on dev/staging.
  *
  * Optionally, {@see self::url_for()} carries a **source path** — the exact 404
- * the merchant clicked — as `&src=<base64url(path)>`, so the app can pre-fill
- * its redirect editor with it (parent-side Ask A, `docs/parent-product-tasks.md`).
- * The encoding is base64url so the value survives `esc_url()` at the call site;
- * a missing source simply yields the bare target, and the app degrades to the
- * un-prefilled screen if Ask A has not landed yet — it never errors.
+ * the merchant clicked — so the app can pre-fill its redirect editor with it
+ * (parent-side Ask A, `docs/parent-product-tasks.md`). Ecwid forwards only
+ * `app_state` to the app iframe, so the source is folded into it behind a `~`
+ * delimiter — `app_state=<target>~<base64url(path)>` — not carried as a sibling
+ * `&src=` param (which Ecwid drops). The base64url encoding survives `esc_url()`
+ * at the call site; `~` is URL-unreserved and absent from both the target keys
+ * and the base64url alphabet, so the app splits on the first `~` unambiguously.
+ * A missing source simply yields the bare target, and the app degrades to the
+ * un-prefilled screen — it never errors.
  *
  * Whether the app is installed is resolved render-safely by
  * {@see AppInstallStatus} (cache-only). When that is indeterminate, this falls
@@ -248,26 +252,31 @@ final class DeepLink {
 	}
 
 	/**
-	 * Substitute the store id, slug, and target into a URL template, appending
-	 * the optional base64url-encoded source path.
+	 * Substitute the store id, slug, and target into a URL template, folding the
+	 * optional base64url-encoded source path into `app_state` behind a `~`.
+	 *
+	 * The source is folded into `app_state` (`<target>~<src>`) rather than added
+	 * as a sibling `&src=` param because Ecwid forwards only `app_state` to the
+	 * app iframe (a standalone `&src=` is dropped). Only the installed deep-link
+	 * form carries a source; the App Market listing form never does.
 	 *
 	 * @param string $template Template with {store_id}/{slug}/{target} tokens.
 	 * @param string $target   Validated target key.
-	 * @param string $src      Optional source path (empty → no `src` param).
+	 * @param string $src      Optional source path (empty → bare target).
 	 * @return string
 	 */
 	private function expand( string $template, string $target, string $src ): string {
-		$url = str_replace(
-			array( '{store_id}', '{slug}', '{target}' ),
-			array( (string) $this->store_id, rawurlencode( $this->slug ), rawurlencode( $target ) ),
-			$template
-		);
+		$app_state = rawurlencode( $target );
 
-		if ( '' !== $src ) {
-			$url .= '&src=' . self::encode_src( $src );
+		if ( '' !== $src && self::DEEP_LINK_TEMPLATE === $template ) {
+			$app_state .= '~' . self::encode_src( $src );
 		}
 
-		return $url;
+		return str_replace(
+			array( '{store_id}', '{slug}', '{target}' ),
+			array( (string) $this->store_id, rawurlencode( $this->slug ), $app_state ),
+			$template
+		);
 	}
 
 	/**
