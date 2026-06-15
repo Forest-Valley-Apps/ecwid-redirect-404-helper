@@ -13,6 +13,10 @@
 /.distignore
 /.wp-env.json
 
+# WordPress.org SVN assets (banner/icon/screenshots) — deployed to SVN assets/,
+# never part of the shipped plugin zip.
+/.wordpress-org
+
 # Build / dependency manifests (dev tooling only)
 /composer.json
 /composer.lock

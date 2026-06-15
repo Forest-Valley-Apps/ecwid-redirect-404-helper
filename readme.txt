@@ -155,9 +155,9 @@ store.
 
 == Screenshots ==
 
-1. The 404 Log — every broken URL, classified by type with a live catalog verdict.
-2. Catalog verdicts distinguish deleted products from typos and broken links.
-3. The Redirects screen — manual WordPress-layer 301s with hit counts.
+1. The 404 Log — every broken URL, classified by type, with a "Fix at" column that tells WordPress-layer 404s (fix them here) apart from Ecwid storefront-layer 404s (only the app can reach them).
+2. Catalog verdicts tell genuinely deleted products apart from typos and never-existed links, so you know which broken store URLs are worth a redirect.
+3. The Redirects screen — manual WordPress-layer 301s, with wildcards and hit counts.
 
 == Changelog ==
 
