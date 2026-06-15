@@ -393,12 +393,14 @@ final class BackendClient {
 	}
 
 	/**
-	 * Report a redirect hit to the backend (fire-and-forget).
+	 * Report a served WP-layer 301 hit to the backend (fire-and-forget).
 	 *
-	 * Deliberately has no caller yet: this is the speced public hit-report
-	 * endpoint (`POST /api/storefront/hit`), kept so the WordPress layer can
-	 * start reporting rule hits to the hosted dashboard when that surface
-	 * needs them — remove only together with that plan.
+	 * The `source: 'wp-layer'` marker tells the backend this hit came from a
+	 * real WordPress 301 (served by this plugin), not an in-store Ecwid
+	 * navigation — so it lands in the per-store `wp_layer_hit_count` rather than
+	 * inflating a `redirects` row's aggregate (parent-side Ask C, live since
+	 * 2026-06-15; `docs/parent-product-tasks.md`). The hosted dashboard surfaces
+	 * it as "N from your WordPress site".
 	 *
 	 * @param string $source_path The source path that matched a rule.
 	 * @return void
@@ -414,6 +416,7 @@ final class BackendClient {
 			array(
 				'storeId'    => $this->store_id,
 				'sourcePath' => $this->clamp_field( $source_path ),
+				'source'     => 'wp-layer',
 			)
 		);
 	}

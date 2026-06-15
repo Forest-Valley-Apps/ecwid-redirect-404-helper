@@ -308,8 +308,8 @@ final class SettingsPage {
 				break;
 			case EcwidPluginDiscovery::STATUS_READY:
 				$message = $connected
-					? __( 'Your Ecwid store is connected. Use Refresh to re-verify and reload redirect rules.', 'redirect-404-helper-for-ecwid' )
-					: __( 'Your Ecwid store was detected. Click Connect to verify and start using it.', 'redirect-404-helper-for-ecwid' );
+					? __( 'Your Ecwid store is connected. While connected, the Ecwid 404s found here and your WordPress redirect hits are shared with the Redirect & 404 Manager dashboard, so all your fixes live in one place. Use Refresh to re-verify and reload redirect rules.', 'redirect-404-helper-for-ecwid' )
+					: __( 'Your Ecwid store was detected. Click Connect to verify it and start surfacing your Ecwid 404s. While connected, those 404s and your WordPress redirect hits are reported to the Redirect & 404 Manager dashboard — the unified home where the storefront-layer fixes live.', 'redirect-404-helper-for-ecwid' );
 				break;
 		}
 

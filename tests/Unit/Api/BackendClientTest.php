@@ -677,6 +677,9 @@ final class BackendClientTest extends TestCase {
 		$body = json_decode( $captured['args']['body'], true );
 		$this->assertSame( self::STORE_ID, $body['storeId'] );
 		$this->assertSame( '/promo', $body['sourcePath'] );
+		// Marks the hit as a real WordPress 301 so the backend counts it
+		// separately from in-store Ecwid navigations (parent-side Ask C).
+		$this->assertSame( 'wp-layer', $body['source'] );
 	}
 }
 

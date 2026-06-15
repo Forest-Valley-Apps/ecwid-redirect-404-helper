@@ -9,6 +9,9 @@ declare( strict_types=1 );
 
 namespace FV\WPEcwidRedirectHelper\Redirect;
 
+use FV\WPEcwidRedirectHelper\Api\BackendClient;
+use FV\WPEcwidRedirectHelper\Connection\ConnectionState;
+use FV\WPEcwidRedirectHelper\Connection\EcwidPluginDiscovery;
 use FV\WPEcwidRedirectHelper\Request\RequestPath;
 use FV\WPEcwidRedirectHelper\Url\RuleMatcher;
 
@@ -32,6 +35,10 @@ defined( 'ABSPATH' ) || exit;
  * *between Ecwid sub-routes* of the embedded store — those never reach the
  * server as distinct requests; that is the storefront-JS layer, i.e. the
  * hosted app's territory.
+ *
+ * When the merchant is connected, a served 301 also reports a fire-and-forget
+ * WP-layer hit to the hosted dashboard ({@see self::report_hit()}) — best-effort,
+ * never on the critical path, and a silent no-op while disconnected.
  */
 final class Redirector {
 
@@ -58,18 +65,27 @@ final class Redirector {
 	private $terminator;
 
 	/**
+	 * Connect opt-in state — gates the (optional) hit report.
+	 *
+	 * @var ConnectionState
+	 */
+	private ConnectionState $state;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param RedirectStore|null $store      Rule repository (injectable for tests).
-	 * @param RuleMatcher|null   $matcher    Matcher (injectable for tests).
-	 * @param callable|null      $terminator Request terminator (injectable for tests).
+	 * @param RedirectStore|null   $store      Rule repository (injectable for tests).
+	 * @param RuleMatcher|null     $matcher    Matcher (injectable for tests).
+	 * @param callable|null        $terminator Request terminator (injectable for tests).
+	 * @param ConnectionState|null $state      Connect state (injectable for tests).
 	 */
-	public function __construct( ?RedirectStore $store = null, ?RuleMatcher $matcher = null, ?callable $terminator = null ) {
+	public function __construct( ?RedirectStore $store = null, ?RuleMatcher $matcher = null, ?callable $terminator = null, ?ConnectionState $state = null ) {
 		$this->store      = $store ?? new RedirectStore();
 		$this->matcher    = $matcher ?? new RuleMatcher();
 		$this->terminator = $terminator ?? static function (): void {
 			exit;
 		};
+		$this->state      = $state ?? new ConnectionState();
 	}
 
 	/**
@@ -134,6 +150,7 @@ final class Redirector {
 		}
 
 		$this->store->record_hit( (string) $match['source'] );
+		$this->report_hit( (string) $match['source'] );
 
 		// Not wp_safe_redirect(): the destination is an admin-defined redirect
 		// target (manage_options + nonce-guarded CRUD, validated on save as a
@@ -142,6 +159,35 @@ final class Redirector {
 		// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
 		wp_redirect( $destination, 301, 'Redirect & 404 Helper for Ecwid' );
 		( $this->terminator )();
+	}
+
+	/**
+	 * Report a served WP-layer 301 hit to the hosted dashboard, but only while
+	 * the merchant is connected — clicking Connect is the explicit opt-in.
+	 *
+	 * Strictly best-effort and never on the critical path: the report is
+	 * fire-and-forget (non-blocking, short timeout in {@see BackendClient}), and
+	 * it runs only after the rule has matched on a 404 render — never on a normal
+	 * request. A disconnected store, or one with no discoverable Ecwid store id,
+	 * is a silent no-op. Mirrors the capture-side reporting in
+	 * {@see \FV\WPEcwidRedirectHelper\Capture\NotFoundCapture}.
+	 *
+	 * @param string $source_path The rule source that matched (the hit path).
+	 * @return void
+	 */
+	private function report_hit( string $source_path ): void {
+		if ( ! $this->state->is_connected() ) {
+			return;
+		}
+
+		// Live store id from the Ecwid plugin (not the Connect-time snapshot),
+		// in lockstep with the 404-report and verdict features.
+		$discovery = EcwidPluginDiscovery::discover();
+		if ( ! $discovery->has_store_id() ) {
+			return;
+		}
+
+		BackendClient::for_store( $discovery->store_id() )->report_hit( $source_path );
 	}
 
 	/**

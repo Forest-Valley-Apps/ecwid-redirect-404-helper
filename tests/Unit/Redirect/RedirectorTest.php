@@ -23,8 +23,20 @@ use RuntimeException;
  */
 final class RedirectorTest extends WpdbTestCase {
 
+	private const STORE_ID = 130416012;
+
+	/**
+	 * Options served to get_option(), keyed by name. Empty = disconnected, so a
+	 * served redirect reports no hit unless a test opts in via connect().
+	 *
+	 * @var array<string,mixed>
+	 */
+	private array $options = array();
+
 	protected function setUp(): void {
 		parent::setUp();
+
+		$this->options = array();
 
 		// record_hit()'s UPDATE; the tests assert via the captured prepare() calls.
 		$this->wpdb->shouldReceive( 'query' )->andReturn( 1 )->byDefault();
@@ -34,6 +46,43 @@ final class RedirectorTest extends WpdbTestCase {
 		Functions\when( 'wp_parse_url' )->alias(
 			static function ( $url, $component = -1 ) {
 				return parse_url( $url, $component );
+			}
+		);
+		Functions\when( 'get_option' )->alias(
+			function ( $name, $default_value = false ) {
+				return $this->options[ $name ] ?? $default_value;
+			}
+		);
+	}
+
+	/**
+	 * Opt the store in to reporting: connected + a discoverable Ecwid store id.
+	 *
+	 * @param int $store_id The store id (Connect snapshot + live Ecwid plugin).
+	 * @return void
+	 */
+	private function connect( int $store_id = self::STORE_ID ): void {
+		$this->options['fv_erh_connection'] = array(
+			'connected' => true,
+			'store_id'  => $store_id,
+		);
+		$this->options['ecwid_store_id']    = (string) $store_id;
+
+		// BackendClient::for_store() resolves the base URL via this filter, then
+		// serializes the body; make both deterministic for the URL/body asserts.
+		Functions\when( 'apply_filters' )->alias(
+			static function ( $tag, $value = null ) {
+				return $value;
+			}
+		);
+		Functions\when( 'untrailingslashit' )->alias(
+			static function ( $value ) {
+				return rtrim( (string) $value, '/' );
+			}
+		);
+		Functions\when( 'wp_json_encode' )->alias(
+			static function ( $data ) {
+				return json_encode( $data );
 			}
 		);
 	}
@@ -352,5 +401,82 @@ final class RedirectorTest extends WpdbTestCase {
 		$this->redirector()->maybe_redirect();
 
 		$this->assertCount( 0, $this->prepared );
+	}
+
+	public function test_served_301_reports_a_wp_layer_hit_when_connected(): void {
+		Functions\when( 'is_404' )->justReturn( true );
+		$_SERVER['REQUEST_URI'] = '/old-page';
+		$this->connect();
+
+		$this->with_rules(
+			array(
+				array(
+					'source'      => '/old-page',
+					'destination' => '/new-page',
+					'is_wildcard' => '0',
+				),
+			)
+		);
+
+		$captured = array();
+		Functions\expect( 'wp_remote_post' )
+			->once()
+			->andReturnUsing(
+				static function ( $url, $request_args ) use ( &$captured ) {
+					$captured['url']  = $url;
+					$captured['args'] = $request_args;
+
+					return array();
+				}
+			);
+		Functions\expect( 'wp_redirect' )
+			->once()
+			->with( '/new-page', 301, 'Redirect & 404 Helper for Ecwid' );
+
+		try {
+			$this->redirector()->maybe_redirect();
+			$this->fail( 'A served redirect must terminate the request.' );
+		} catch ( RuntimeException $e ) {
+			$this->assertSame( 'terminated', $e->getMessage() );
+		}
+
+		// Fire-and-forget hit report, marked as the WP layer, against the matched
+		// rule source — so the hosted dashboard counts it as a WordPress 301.
+		$this->assertStringContainsString( '/api/storefront/hit', $captured['url'] );
+		$this->assertFalse( $captured['args']['blocking'], 'hit reports must be fire-and-forget' );
+
+		$body = json_decode( $captured['args']['body'], true );
+		$this->assertSame( self::STORE_ID, $body['storeId'] );
+		$this->assertSame( '/old-page', $body['sourcePath'] );
+		$this->assertSame( 'wp-layer', $body['source'] );
+	}
+
+	public function test_served_301_does_not_report_a_hit_when_disconnected(): void {
+		Functions\when( 'is_404' )->justReturn( true );
+		$_SERVER['REQUEST_URI'] = '/old-page';
+		// No connect(): the merchant never opted in to the hosted service.
+
+		$this->with_rules(
+			array(
+				array(
+					'source'      => '/old-page',
+					'destination' => '/new-page',
+					'is_wildcard' => '0',
+				),
+			)
+		);
+
+		// The 301 still serves; only the report is withheld.
+		Functions\expect( 'wp_remote_post' )->never();
+		Functions\expect( 'wp_redirect' )
+			->once()
+			->with( '/new-page', 301, 'Redirect & 404 Helper for Ecwid' );
+
+		try {
+			$this->redirector()->maybe_redirect();
+			$this->fail( 'A served redirect must terminate the request.' );
+		} catch ( RuntimeException $e ) {
+			$this->assertSame( 'terminated', $e->getMessage() );
+		}
 	}
 }
