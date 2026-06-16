@@ -17,11 +17,11 @@ expects). It is excluded from the distributable zip via `.distignore`.
 
 | File | WP.org slot | Size | Status |
 |------|-------------|------|--------|
-| `screenshot-1.png` | Screenshot 1 — 404 Log | ~1200×750 | **to capture** |
-| `screenshot-2.png` | Screenshot 2 — Catalog verdicts | ~1200×750 | **to capture** |
-| `screenshot-3.png` | Screenshot 3 — Redirects | ~1200×750 | **to capture** |
-| `banner-1544x500.png` / `banner-772x250.png` | Header banner | exact | re-crop from `Header_icon 1024x538.png` (S9) |
-| `icon-256x256.png` / `icon-128x128.png` | Plugin icon | exact | downscale from `logo_Icon.png` (S9) |
+| `screenshot-1.png` | Screenshot 1 — 404 Log | 1200×1024 | ✓ captured (2026-06-16) |
+| `screenshot-2.png` | Screenshot 2 — Catalog verdicts | 1200×820 | ✓ captured (2026-06-16) |
+| `screenshot-3.png` | Screenshot 3 — Redirects | 1200×1055 | ✓ captured (2026-06-16) |
+| `banner-1544x500.png` / `banner-772x250.png` | Header banner | 1544×500 / 772×250 | ✓ composed (2026-06-16) — `og.png` design language, lime mark + plugin name & tagline (not a crop of `Header_icon`) |
+| `icon-256x256.png` / `icon-128x128.png` | Plugin icon | 256×256 / 128×128 | ✓ downscaled from `logo_Icon.png` (2026-06-16) |
 
 `screenshot-N.png` maps **by number** to the Nth entry of the `== Screenshots ==`
 list in `readme.txt`. Keep the two in lockstep.
