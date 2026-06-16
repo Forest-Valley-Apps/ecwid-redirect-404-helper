@@ -130,6 +130,12 @@ final class Assets {
 			.fv-erh-app-btn:hover, .fv-erh-app-btn:focus { background:#f0faf4; border-color:#1e8e4f; color:#1e8e4f; }
 			.fv-erh-app-btn__logo { display:block; width:20px; height:auto; }
 			.wp-header-end { clear:both; }
+			/* WP-vs-storefront layer banner (Redirects screen): a branded, always-on
+			   orientation banner — app logo + the honest boundary + a deep-link to
+			   manage storefront redirects. */
+			.fv-erh-layer-banner { display:flex; align-items:center; gap:14px; max-width:760px; margin:12px 0; padding:12px 16px; background:#fff; border:1px solid #c3c4c7; border-left:4px solid #27ae60; }
+			.fv-erh-layer-banner__logo { flex:0 0 auto; width:40px; height:auto; }
+			.fv-erh-layer-banner__text { margin:0; color:#2c3e50; }
 		';
 	}
 }

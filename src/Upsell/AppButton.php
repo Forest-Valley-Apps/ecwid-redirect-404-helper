@@ -65,6 +65,16 @@ final class AppButton {
 	}
 
 	/**
+	 * URL of the shipped app logo, for call sites that render it outside this
+	 * button (e.g. the Redirects screen's WP-vs-storefront banner).
+	 *
+	 * @return string
+	 */
+	public static function logo_url(): string {
+		return plugins_url( 'assets/img/app-logo.svg', FV_ERH_PLUGIN_FILE );
+	}
+
+	/**
 	 * Render the button. Designed to sit beside an `<h1 class="wp-heading-inline">`
 	 * before the `.wp-header-end` marker; it floats itself to the top-right via its
 	 * own class.
@@ -90,7 +100,7 @@ final class AppButton {
 				. '<img class="fv-erh-app-btn__logo" src="%2$s" alt="" width="20" height="10" />'
 				. '<span>%3$s</span><span aria-hidden="true">↗</span></a>',
 			esc_url( $deep_link->url_for( $target ) ),
-			esc_url( plugins_url( 'assets/img/app-logo.svg', FV_ERH_PLUGIN_FILE ) ),
+			esc_url( self::logo_url() ),
 			esc_html( $label )
 		);
 	}

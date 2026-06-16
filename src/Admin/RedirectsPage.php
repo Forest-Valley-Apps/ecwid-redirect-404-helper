@@ -232,11 +232,16 @@ final class RedirectsPage {
 
 		echo '<div class="wrap">';
 		echo '<h1 class="wp-heading-inline">' . esc_html__( 'Redirects', 'redirect-404-helper-for-ecwid' ) . '</h1>';
-		( new AppButton() )->render( DeepLink::TARGET_HOME );
+
+		// One deep-link builder for the whole screen — both the header button and
+		// the layer banner need it; resolved once (render-safe, cache-only).
+		$deep_link = DeepLink::from_environment();
+
+		( new AppButton( $deep_link ) )->render( DeepLink::TARGET_HOME );
 		echo '<hr class="wp-header-end" />';
 
 		$this->render_notice();
-		$this->render_scope_note();
+		$this->render_scope_note( $deep_link );
 		$this->render_add_form();
 
 		$table = new RedirectListTable( $this->store->all() );
@@ -314,21 +319,30 @@ final class RedirectsPage {
 	}
 
 	/**
-	 * Render the WP-layer scope note.
+	 * Render the WP-vs-storefront layer banner.
 	 *
-	 * This framing is deliberate (and review-relevant): the free plugin
-	 * redirects at the WordPress layer only, and we say so instead of letting
-	 * it be mistaken for the storefront-layer capability of the paid app.
+	 * This framing is deliberate (and review-relevant): the free plugin redirects
+	 * at the WordPress layer only, and we say so — branded, with the app's logo and
+	 * a deep-link — instead of letting it be mistaken for the storefront-layer
+	 * capability of the paid app. The honest "why" (storefront pages never reach
+	 * WordPress) keeps it orientation, not nagware.
 	 *
+	 * @param DeepLink $deep_link Shared builder for the "manage storefront" link.
 	 * @return void
 	 */
-	private function render_scope_note(): void {
-		echo '<div class="notice notice-info inline"><p>';
-		echo esc_html__(
-			'These are WordPress-layer redirects: the server answers with an HTTP 301 for any URL on this site that would otherwise be a 404. They cannot redirect between pages inside the embedded Ecwid storefront — those navigations happen in the visitor\'s browser and never reach WordPress. Storefront-layer redirects are what the Redirect & 404 Manager app inside Ecwid provides.',
-			'redirect-404-helper-for-ecwid'
+	private function render_scope_note( DeepLink $deep_link ): void {
+		printf(
+			'<div class="fv-erh-layer-banner">'
+				. '<img class="fv-erh-layer-banner__logo" src="%1$s" alt="" width="40" height="20" />'
+				. '<p class="fv-erh-layer-banner__text"><strong>%2$s</strong> %3$s '
+				. '<a href="%4$s" target="_blank" rel="noopener noreferrer">%5$s <span aria-hidden="true">↗</span></a></p>'
+				. '</div>',
+			esc_url( AppButton::logo_url() ),
+			esc_html__( 'These are WordPress-site redirects.', 'redirect-404-helper-for-ecwid' ),
+			esc_html__( 'Redirects inside your Ecwid storefront happen in the visitor\'s browser and never reach WordPress — manage those in the Redirect & 404 Manager app.', 'redirect-404-helper-for-ecwid' ),
+			esc_url( $deep_link->url_for( DeepLink::TARGET_STOREFRONT_LAYER ) ),
+			esc_html__( 'Open storefront redirects', 'redirect-404-helper-for-ecwid' )
 		);
-		echo '</p></div>';
 	}
 
 	/**
