@@ -113,9 +113,19 @@ final class Assets {
 			.fv-erh-upgrade__lead { max-width:760px; font-size:14px; color:#2c3e50; }
 			.fv-erh-upgrade__note { max-width:760px; color:#646970; }
 			.fv-erh-upgrade__grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:16px; max-width:760px; margin-top:16px; }
-			.fv-erh-upgrade__card { background:#fff; border:1px solid #c3c4c7; border-top:3px solid #27ae60; padding:4px 16px 16px; }
+			.fv-erh-upgrade__card { display:flex; flex-direction:column; background:#fff; border:1px solid #c3c4c7; border-top:3px solid #27ae60; padding:4px 16px 16px; }
 			.fv-erh-upgrade__card h2 { font-size:15px; color:#2c3e50; }
 			.fv-erh-upgrade__card p { color:#2c3e50; }
+			/* Pin each card's CTA to the card bottom so the buttons line up across a
+			   row of unequal-length cards; keep it natural-width, not full-width. */
+			.fv-erh-upgrade__card .button { margin-top:auto; align-self:flex-start; }
+			/* Paint the paid-app CTAs FV brand green instead of WP admin blue. */
+			.fv-erh-upgrade__card .button-primary { background:#27ae60; border-color:#1e8e4f; color:#fff; }
+			.fv-erh-upgrade__card .button-primary:hover, .fv-erh-upgrade__card .button-primary:focus { background:#1e8e4f; border-color:#1e8e4f; color:#fff; }
+			.fv-erh-upgrade__card .button-primary:focus { box-shadow:0 0 0 1px #fff, 0 0 0 3px #27ae60; }
+			/* Branded page header: app logo + title lockup (this IS the app product page). */
+			.fv-erh-upgrade__header { display:flex; align-items:center; gap:12px; }
+			.fv-erh-upgrade__logo { flex:0 0 auto; width:auto; height:44px; }
 			/* Always-visible per-row primary action (unbranded): the storefront
 			   "Fix in Ecwid" / WP "Create redirect" link, shown inline instead of
 			   the hover-only .row-actions tray. */

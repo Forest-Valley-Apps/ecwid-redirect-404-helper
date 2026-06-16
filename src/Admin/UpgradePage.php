@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace FV\WPEcwidRedirectHelper\Admin;
 
+use FV\WPEcwidRedirectHelper\Upsell\AppButton;
 use FV\WPEcwidRedirectHelper\Upsell\DeepLink;
 
 defined( 'ABSPATH' ) || exit;
@@ -88,7 +89,13 @@ final class UpgradePage {
 		}
 
 		echo '<div class="wrap">';
+		echo '<div class="fv-erh-upgrade__header">';
+		printf(
+			'<img class="fv-erh-upgrade__logo" src="%s" alt="" width="88" height="44" />',
+			esc_url( AppButton::logo_url() )
+		);
 		echo '<h1>' . esc_html__( 'Upgrade — Powered by Redirect & 404 Manager', 'redirect-404-helper-for-ecwid' ) . '</h1>';
+		echo '</div>';
 
 		echo '<p class="fv-erh-upgrade__lead">';
 		echo esc_html__(
