@@ -87,15 +87,19 @@ final class Assets {
 	private static function css(): string {
 		return '
 			.fv-erh-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; line-height:1.6; color:#fff; }
-			.fv-erh-badge--product { background:#27ae60; }
-			.fv-erh-badge--category { background:#16a085; }
-			.fv-erh-badge--wp-page { background:#95a5a6; }
-			.fv-erh-badge--layer-wp { background:#34495e; }
-			.fv-erh-badge--layer-storefront { background:#8e44ad; }
-			.fv-erh-badge--verdict-in-catalog { background:#2980b9; }
-			.fv-erh-badge--verdict-deleted { background:#c0392b; }
-			.fv-erh-badge--verdict-never-existed { background:#e67e22; }
-			.fv-erh-badge--verdict-not-in-catalog { background:#7f8c8d; }
+			/* Badge fills map to Forest Valley brand tokens (Shared-assets-git/styles/shared.css).
+			   Literal hexes (not var(--fv-*)) because the brand token stylesheet is not loaded
+			   into wp-admin. Status verdicts use the fixed status palette; type/layer use the
+			   neutral navy + gray scale, with green reserved for the primary commerce entity. */
+			.fv-erh-badge--product { background:#27ae60; } /* --fv-green */
+			.fv-erh-badge--category { background:#2c3e50; } /* --fv-navy */
+			.fv-erh-badge--wp-page { background:#6c757d; } /* --fv-gray-500 */
+			.fv-erh-badge--layer-wp { background:#34495e; } /* --fv-navy-light */
+			.fv-erh-badge--layer-storefront { background:#3498db; } /* --fv-info */
+			.fv-erh-badge--verdict-in-catalog { background:#27ae60; } /* --fv-green (healthy / still exists) */
+			.fv-erh-badge--verdict-deleted { background:#e74c3c; } /* --fv-danger */
+			.fv-erh-badge--verdict-never-existed { background:#f39c12; } /* --fv-warning */
+			.fv-erh-badge--verdict-not-in-catalog { background:#6c757d; } /* --fv-gray-500 */
 			.fv-erh-ellipsis { display:inline-block; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
 			.fv-erh-collision-panel { background:#fff; border:1px solid #c3c4c7; border-left:4px solid #dba617; padding:1px 12px 12px; margin:12px 0; }
 			.fv-erh-collision-table { max-width:760px; }
