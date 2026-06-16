@@ -23,6 +23,11 @@
 # Like .wordpress-org, it is tracked in git but never shipped.
 /Shared-assets-git
 
+# NOTE: assets/ is intentionally NOT excluded. Unlike the dev-only reference copy
+# above, ecwid-redirect-404-helper/assets/img/ holds a runtime-shipped file — the
+# app logo (app-logo.svg) the funnel's header button loads via plugins_url(). It
+# must ship; do not add /assets here.
+
 # Build / dependency manifests (dev tooling only)
 /composer.json
 /composer.lock

@@ -28,8 +28,9 @@ if ( ! class_exists( '\WP_List_Table' ) ) {
  *
  * The per-row routing is the funnel made honest: a WordPress-layer row keeps the
  * free "Create redirect" 301; a storefront-layer row (an Ecwid product/category
- * route no WordPress plugin can 301) instead gets a "Fix in app" deep-link, with
- * the row's own path threaded through so the app can pre-fill it. The layer is
+ * route no WordPress plugin can 301) instead gets an always-visible "Fix in
+ * Ecwid" deep-link, with the row's own path threaded through so the app can
+ * pre-fill it. Both are shown inline, not as hover-only row actions; the layer is
  * derived ({@see RowLayer}), never stored.
  */
 final class LogListTable extends \WP_List_Table {
@@ -56,7 +57,7 @@ final class LogListTable extends \WP_List_Table {
 	private array $query_args;
 
 	/**
-	 * Deep-link builder for storefront-layer "Fix in app" actions, or null until
+	 * Deep-link builder for storefront-layer "Fix in Ecwid" actions, or null until
 	 * first needed (resolved from the environment only when a storefront row
 	 * actually renders, so a WP-only log does no discovery).
 	 *
@@ -243,7 +244,8 @@ final class LogListTable extends \WP_List_Table {
 	}
 
 	/**
-	 * URL column: the path plus its row actions.
+	 * URL column: the path, its always-visible primary fix link, and the
+	 * hover-only Delete row action.
 	 *
 	 * @param array $item Log row.
 	 * @return string
@@ -264,22 +266,23 @@ final class LogListTable extends \WP_List_Table {
 			'fv_erh_log_delete_' . $id
 		);
 
-		// Layer-aware primary action: WordPress-layer rows can be fixed with the
-		// free 301; storefront-layer rows can only be fixed in the app, so they
-		// deep-link there (with this path threaded through for prefill) instead of
-		// offering a redirect that could never fire.
+		// Layer-aware primary action, shown always (inline) rather than as a
+		// hover-only row action: a WordPress-layer row can be fixed with the free
+		// 301 right here ("Create redirect"); a storefront-layer row can only be
+		// fixed in the app, so it deep-links to Ecwid ("Fix in Ecwid"), with this
+		// path threaded through for prefill, instead of offering a 301 that could
+		// never fire. Unbranded by design — the header's app button carries the brand.
 		$layer = RowLayer::for_classification( (string) $item['classification'] );
 
 		if ( RowLayer::LAYER_STOREFRONT === $layer ) {
 			$target  = RowLayer::deep_link_target( (string) ( $item['verdict'] ?? '' ) );
 			$app_url = $this->deep_link()->url_for( $target, $path );
 
-			$primary = array(
-				'fix-in-app' => sprintf(
-					'<a href="%s" target="_blank" rel="noopener noreferrer">%s ↗</a>',
-					esc_url( $app_url ),
-					esc_html__( 'Fix in app', 'redirect-404-helper-for-ecwid' )
-				),
+			// The ↗ marks the new-tab hop out to the Ecwid control panel.
+			$fix_link = sprintf(
+				'<a class="fv-erh-row-fix" href="%s" target="_blank" rel="noopener noreferrer">%s <span aria-hidden="true">↗</span></a>',
+				esc_url( $app_url ),
+				esc_html__( 'Fix in Ecwid', 'redirect-404-helper-for-ecwid' )
 			);
 		} else {
 			$create_url = add_query_arg(
@@ -290,16 +293,15 @@ final class LogListTable extends \WP_List_Table {
 				admin_url( 'admin.php' )
 			);
 
-			$primary = array(
-				'create-redirect' => sprintf(
-					'<a href="%s">%s</a>',
-					esc_url( $create_url ),
-					esc_html__( 'Create redirect', 'redirect-404-helper-for-ecwid' )
-				),
+			$fix_link = sprintf(
+				'<a class="fv-erh-row-fix" href="%s">%s</a>',
+				esc_url( $create_url ),
+				esc_html__( 'Create redirect', 'redirect-404-helper-for-ecwid' )
 			);
 		}
 
-		$actions = $primary + array(
+		// Delete stays a hover-only row action; the fix link above is always shown.
+		$actions = array(
 			'delete' => sprintf(
 				'<a href="%s">%s</a>',
 				esc_url( $delete_url ),
@@ -307,7 +309,9 @@ final class LogListTable extends \WP_List_Table {
 			),
 		);
 
-		return '<strong>' . esc_html( $path ) . '</strong>' . $this->row_actions( $actions );
+		return '<strong>' . esc_html( $path ) . '</strong>'
+			. '<div class="fv-erh-row-cta">' . $fix_link . '</div>'
+			. $this->row_actions( $actions );
 	}
 
 	/**

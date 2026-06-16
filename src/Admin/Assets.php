@@ -116,6 +116,20 @@ final class Assets {
 			.fv-erh-upgrade__card { background:#fff; border:1px solid #c3c4c7; border-top:3px solid #27ae60; padding:4px 16px 16px; }
 			.fv-erh-upgrade__card h2 { font-size:15px; color:#2c3e50; }
 			.fv-erh-upgrade__card p { color:#2c3e50; }
+			/* Always-visible per-row primary action (unbranded): the storefront
+			   "Fix in Ecwid" / WP "Create redirect" link, shown inline instead of
+			   the hover-only .row-actions tray. */
+			.fv-erh-row-cta { margin-top:4px; }
+			.fv-erh-row-fix { font-weight:600; text-decoration:none; }
+			/* The persistent, branded app button a screen header renders top-right
+			   (the 404 Log today). The logo is an <img> that keeps its own colours,
+			   so hover uses a soft tint, not a green fill that would swallow the
+			   mark. The scoped clear stops the float bleeding past the header divider
+			   (this stylesheet loads only on the plugin screens). */
+			.fv-erh-app-btn { display:inline-flex; align-items:center; gap:6px; float:right; margin-top:-3px; padding:4px 12px; border:1px solid #27ae60; border-radius:4px; background:#fff; color:#27ae60; font-weight:600; line-height:1.8; text-decoration:none; }
+			.fv-erh-app-btn:hover, .fv-erh-app-btn:focus { background:#f0faf4; border-color:#1e8e4f; color:#1e8e4f; }
+			.fv-erh-app-btn__logo { display:block; width:20px; height:auto; }
+			.wp-header-end { clear:both; }
 		';
 	}
 }

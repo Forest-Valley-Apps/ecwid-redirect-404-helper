@@ -12,6 +12,7 @@ namespace FV\WPEcwidRedirectHelper\Admin;
 use FV\WPEcwidRedirectHelper\Collision\CollisionScanner;
 use FV\WPEcwidRedirectHelper\Log\CsvExporter;
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
+use FV\WPEcwidRedirectHelper\Upsell\AppButton;
 use FV\WPEcwidRedirectHelper\Upsell\DeepLink;
 use FV\WPEcwidRedirectHelper\Upsell\UpgradeCta;
 use FV\WPEcwidRedirectHelper\Verdict\VerdictChecker;
@@ -247,6 +248,7 @@ final class LogPage {
 		echo '<h1 class="wp-heading-inline">' . esc_html__( '404 Log', 'redirect-404-helper-for-ecwid' ) . '</h1>';
 		echo ' <a href="' . esc_url( $export_url ) . '" class="page-title-action">' . esc_html__( 'Export CSV', 'redirect-404-helper-for-ecwid' ) . '</a>';
 		$this->render_check_catalog_button();
+		( new AppButton() )->render( DeepLink::TARGET_HOME );
 		echo '<hr class="wp-header-end" />';
 
 		$this->render_notice();
