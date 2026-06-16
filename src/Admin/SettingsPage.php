@@ -14,6 +14,8 @@ use FV\WPEcwidRedirectHelper\Api\EcwidCatalogClient;
 use FV\WPEcwidRedirectHelper\Connection\ConnectionState;
 use FV\WPEcwidRedirectHelper\Connection\ConnectionVerifier;
 use FV\WPEcwidRedirectHelper\Connection\EcwidPluginDiscovery;
+use FV\WPEcwidRedirectHelper\Upsell\AppButton;
+use FV\WPEcwidRedirectHelper\Upsell\DeepLink;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -294,6 +296,35 @@ final class SettingsPage {
 	 * @return void
 	 */
 	private function render_guidance( EcwidPluginDiscovery $discovery, bool $connected ): void {
+		// The READY state is the funnel surface, branded with the app logo: connected
+		// gets a prominent banner + a live dashboard deep-link; not-connected gets a
+		// light branded note (logo, no CTA) so the Connect button below stays the only
+		// action. The pre-ready setup states stay plain — no app push before the
+		// merchant can even connect.
+		if ( EcwidPluginDiscovery::STATUS_READY === $discovery->status() ) {
+			if ( $connected ) {
+				printf(
+					'<div class="fv-erh-layer-banner">'
+						. '<img class="fv-erh-layer-banner__logo" src="%1$s" alt="" width="40" height="20" />'
+						. '<p class="fv-erh-layer-banner__text">%2$s '
+						. '<a href="%3$s" target="_blank" rel="noopener noreferrer">%4$s <span aria-hidden="true">↗</span></a>'
+						. '</p></div>',
+					esc_url( AppButton::logo_url() ),
+					esc_html__( 'Your store is connected. Your Ecwid 404s and WordPress redirect hits flow to the Redirect & 404 Manager dashboard — your unified home for every fix. Use Refresh to re-verify and reload redirect rules.', 'redirect-404-helper-for-ecwid' ),
+					esc_url( DeepLink::from_environment()->url_for( DeepLink::TARGET_HOME ) ),
+					esc_html__( 'Open the dashboard', 'redirect-404-helper-for-ecwid' )
+				);
+			} else {
+				printf(
+					'<p><img class="fv-erh-inline-logo" src="%1$s" alt="" width="20" height="10" /> %2$s</p>',
+					esc_url( AppButton::logo_url() ),
+					esc_html__( 'Your Ecwid store was detected. Click Connect to verify it and start surfacing your Ecwid 404s — once connected, those 404s and your WordPress redirect hits flow to the Redirect & 404 Manager dashboard, the unified home where storefront-layer fixes live.', 'redirect-404-helper-for-ecwid' )
+				);
+			}
+
+			return;
+		}
+
 		$message = '';
 
 		switch ( $discovery->status() ) {
@@ -305,11 +336,6 @@ final class SettingsPage {
 				break;
 			case EcwidPluginDiscovery::STATUS_NO_TOKEN:
 				$message = __( 'A store ID was found but no storefront token is available yet. Reconnect your store in the Ecwid plugin to issue one.', 'redirect-404-helper-for-ecwid' );
-				break;
-			case EcwidPluginDiscovery::STATUS_READY:
-				$message = $connected
-					? __( 'Your Ecwid store is connected. While connected, the Ecwid 404s found here and your WordPress redirect hits are shared with the Redirect & 404 Manager dashboard, so all your fixes live in one place. Use Refresh to re-verify and reload redirect rules.', 'redirect-404-helper-for-ecwid' )
-					: __( 'Your Ecwid store was detected. Click Connect to verify it and start surfacing your Ecwid 404s. While connected, those 404s and your WordPress redirect hits are reported to the Redirect & 404 Manager dashboard — the unified home where the storefront-layer fixes live.', 'redirect-404-helper-for-ecwid' );
 				break;
 		}
 

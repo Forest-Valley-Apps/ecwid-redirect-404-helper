@@ -233,11 +233,10 @@ final class RedirectsPage {
 		echo '<div class="wrap">';
 		echo '<h1 class="wp-heading-inline">' . esc_html__( 'Redirects', 'redirect-404-helper-for-ecwid' ) . '</h1>';
 
-		// One deep-link builder for the whole screen — both the header button and
-		// the layer banner need it; resolved once (render-safe, cache-only).
+		// The layer banner needs a deep-link builder for its "manage storefront"
+		// link; resolved once here (render-safe, cache-only).
 		$deep_link = DeepLink::from_environment();
 
-		( new AppButton( $deep_link ) )->render( DeepLink::TARGET_HOME );
 		echo '<hr class="wp-header-end" />';
 
 		$this->render_notice();

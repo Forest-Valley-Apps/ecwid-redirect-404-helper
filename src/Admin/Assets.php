@@ -136,6 +136,9 @@ final class Assets {
 			.fv-erh-layer-banner { display:flex; align-items:center; gap:14px; max-width:760px; margin:12px 0; padding:12px 16px; background:#fff; border:1px solid #c3c4c7; border-left:4px solid #27ae60; }
 			.fv-erh-layer-banner__logo { flex:0 0 auto; width:40px; height:auto; }
 			.fv-erh-layer-banner__text { margin:0; color:#2c3e50; }
+			/* Small inline app logo for the lighter "logo on the guidance" note
+			   (Settings, ready-but-not-connected) — no banner box, no CTA. */
+			.fv-erh-inline-logo { width:20px; height:auto; vertical-align:middle; margin-right:6px; }
 		';
 	}
 }
