@@ -12,6 +12,7 @@ namespace FV\WPEcwidRedirectHelper\Admin;
 use FV\WPEcwidRedirectHelper\Log\NotFoundLog;
 use FV\WPEcwidRedirectHelper\Redirect\RedirectStore;
 use FV\WPEcwidRedirectHelper\Request\RequestPath;
+use FV\WPEcwidRedirectHelper\Upsell\AppButton;
 use FV\WPEcwidRedirectHelper\Upsell\DeepLink;
 use FV\WPEcwidRedirectHelper\Upsell\UpgradeCta;
 use FV\WPEcwidRedirectHelper\Url\RuleMatcher;
@@ -230,7 +231,9 @@ final class RedirectsPage {
 		}
 
 		echo '<div class="wrap">';
-		echo '<h1>' . esc_html__( 'Redirects', 'redirect-404-helper-for-ecwid' ) . '</h1>';
+		echo '<h1 class="wp-heading-inline">' . esc_html__( 'Redirects', 'redirect-404-helper-for-ecwid' ) . '</h1>';
+		( new AppButton() )->render( DeepLink::TARGET_HOME );
+		echo '<hr class="wp-header-end" />';
 
 		$this->render_notice();
 		$this->render_scope_note();
