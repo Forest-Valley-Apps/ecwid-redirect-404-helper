@@ -116,7 +116,7 @@ final class Assets {
 			.fv-erh-upgrade__card { display:flex; flex-direction:column; background:#fff; border:1px solid #c3c4c7; border-top:3px solid #27ae60; padding:4px 16px 16px; }
 			.fv-erh-upgrade__card h2 { font-size:15px; color:#2c3e50; }
 			.fv-erh-upgrade__card p { color:#2c3e50; }
-			/* Pin each card's CTA to the card bottom so the buttons line up across a
+			/* Pin the CTA in each card to the bottom so the buttons line up across a
 			   row of unequal-length cards; keep it natural-width, not full-width. */
 			.fv-erh-upgrade__card .button { margin-top:auto; align-self:flex-start; }
 			/* Paint the paid-app CTAs FV brand green instead of WP admin blue. */
