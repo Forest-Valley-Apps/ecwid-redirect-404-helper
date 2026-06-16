@@ -17,6 +17,12 @@
 # never part of the shipped plugin zip.
 /.wordpress-org
 
+# Brand asset source/reference copy, synced from the shared library by
+# scripts/sync-assets.sh. Dev input only: the runtime UI embeds brand colors as
+# literals in PHP and ships no CSS file, so none of this is needed at runtime.
+# Like .wordpress-org, it is tracked in git but never shipped.
+/Shared-assets-git
+
 # Build / dependency manifests (dev tooling only)
 /composer.json
 /composer.lock

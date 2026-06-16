@@ -1,0 +1,339 @@
+/* Forest Valley — Shared Styles (consolidated) */
+
+/* === Reset === */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  line-height: 1.5;
+}
+
+body {
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img,
+picture,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+  font-weight: 600;
+}
+
+p {
+  overflow-wrap: break-word;
+}
+
+/* === Design Tokens === */
+:root {
+  /* Primary */
+  --fv-green: #27ae60;
+  --fv-green-dark: #219a52;
+  --fv-green-light: #2ecc71;
+
+  /* Neutrals */
+  --fv-navy: #2c3e50;
+  --fv-navy-light: #34495e;
+  --fv-white: #ffffff;
+
+  /* Grays — full 50–800 scale is published even if not every rung is referenced
+   * by a .fv-* utility. Apps may use the literals directly for brand-tinted UI.
+   * Do not prune unused entries; the scale contract is documented in
+   * UI-DESIGN-RULES.md §2. */
+  --fv-gray-50: #fafbfc;
+  --fv-gray-100: #f0f2f5;
+  --fv-gray-200: #e1e5ea;
+  --fv-gray-300: #cdd3da;
+  --fv-gray-400: #adb5bd;
+  --fv-gray-500: #6c757d;
+  --fv-gray-600: #495057;
+  --fv-gray-700: #3d4349;
+  --fv-gray-800: #343a40;
+
+  /* Status */
+  --fv-danger: #e74c3c;
+  --fv-warning: #f39c12;
+  --fv-info: #3498db;
+
+  /* Typography */
+  --fv-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --fv-font-mono: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  --fv-fs-xs: 0.75rem;
+  --fv-fs-sm: 0.875rem;
+  --fv-fs-base: 1rem;
+  --fv-fs-lg: 1.125rem;
+  --fv-fs-xl: 1.25rem;
+  --fv-fs-2xl: 1.75rem;
+  --fv-fs-3xl: 2.5rem;
+
+  /* Spacing */
+  --fv-space-xs: 4px;
+  --fv-space-sm: 8px;
+  --fv-space-md: 16px;
+  --fv-space-lg: 24px;
+  --fv-space-xl: 32px;
+  --fv-space-2xl: 48px;
+  --fv-space-3xl: 64px;
+
+  /* Layout */
+  --fv-max-width: 1120px;
+  --fv-action-row-max: 384px;
+  --fv-radius: 8px;
+  --fv-radius-sm: 4px;
+  --fv-radius-lg: 12px;
+  --fv-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --fv-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
+  --fv-transition: 0.2s ease;
+}
+
+/* === Base Styles & Utilities === */
+body {
+  font-family: var(--fv-font);
+  font-size: var(--fv-fs-base);
+  line-height: 1.6;
+  color: var(--fv-navy);
+  background-color: var(--fv-white);
+}
+
+.fv-container {
+  max-width: var(--fv-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--fv-space-lg);
+  padding-right: var(--fv-space-lg);
+}
+
+h1 { font-size: var(--fv-fs-3xl); line-height: 1.2; }
+h2 { font-size: var(--fv-fs-2xl); line-height: 1.3; }
+h3 { font-size: var(--fv-fs-xl);  line-height: 1.4; }
+
+.fv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fv-space-sm);
+  padding: var(--fv-space-sm) var(--fv-space-md);
+  font-size: var(--fv-fs-sm);
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: var(--fv-radius);
+  cursor: pointer;
+  transition: background-color var(--fv-transition), border-color var(--fv-transition), color var(--fv-transition);
+  text-decoration: none;
+  line-height: 1.5;
+}
+
+.fv-btn-primary {
+  background-color: var(--fv-green);
+  color: var(--fv-white);
+  border-color: var(--fv-green);
+}
+
+.fv-btn-primary:hover {
+  background-color: var(--fv-green-dark);
+  border-color: var(--fv-green-dark);
+}
+
+.fv-btn-outline {
+  background-color: transparent;
+  color: var(--fv-green);
+  border-color: var(--fv-green);
+}
+
+.fv-btn-outline:hover {
+  background-color: var(--fv-green);
+  color: var(--fv-white);
+}
+
+/* Action row: a card-footer / row-level cluster where every button
+   reads as visually equal-sized. See §5.1.1 of UI-DESIGN-RULES.md. */
+.fv-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fv-space-sm);
+  max-width: var(--fv-action-row-max);
+}
+.fv-action-row > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Defend against host-app default margins on form/details: <form> has a
+   user-agent margin-block-end, and apps that use <details> for disclosure
+   widgets often add a vertical margin to all `details` (e.g.
+   `.foo details { margin: 8px 0 }`). Either would offset one action-row
+   button vertically and break alignment with its sibling.
+   The doubled `.fv-action-row.fv-action-row` is a deliberate
+   specificity-bumping technique (raises this rule from 0,1,1 to 0,2,1)
+   so the defense beats any common descendant rule like
+   `.foo details { margin: ... }` (0,1,1) regardless of source order. */
+.fv-action-row.fv-action-row > form,
+.fv-action-row.fv-action-row > details { margin: 0; }
+/* padding + gap are re-stated here (not just inherited from .fv-btn)
+   so that any app-level descendant selector targeting summaries
+   (e.g. `.foo details summary { padding: ... }`) cannot win specificity
+   against `<summary class="fv-btn">` in this row and quietly produce a
+   different height than its sibling `<button>`. See §5.1.1. */
+.fv-action-row .fv-btn,
+.fv-action-row summary.fv-btn {
+  width: 100%;
+  padding: var(--fv-space-sm) var(--fv-space-md);
+  gap: var(--fv-space-sm);
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.fv-card {
+  background: var(--fv-white);
+  border-radius: var(--fv-radius-lg);
+  box-shadow: var(--fv-shadow);
+  padding: var(--fv-space-lg);
+  transition: box-shadow var(--fv-transition), transform var(--fv-transition);
+}
+
+.fv-card:hover {
+  box-shadow: var(--fv-shadow-lg);
+  transform: translateY(-2px);
+}
+
+.fv-text-muted {
+  color: var(--fv-gray-500);
+}
+
+.fv-text-center {
+  text-align: center;
+}
+
+/* === Header === */
+.fv-header {
+  padding: var(--fv-space-md) 0;
+  background: var(--fv-white);
+  border-bottom: 1px solid var(--fv-gray-200);
+}
+
+.fv-header .fv-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fv-header-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--fv-space-sm);
+  text-decoration: none;
+  color: var(--fv-navy);
+}
+
+.fv-header-logo {
+  height: 32px;
+  width: auto;
+}
+
+.fv-header-title {
+  font-size: var(--fv-fs-lg);
+  font-weight: 600;
+}
+
+.fv-header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--fv-space-lg);
+}
+
+.fv-header-nav a {
+  font-size: var(--fv-fs-sm);
+  color: var(--fv-gray-600);
+  text-decoration: none;
+  transition: color var(--fv-transition);
+}
+
+.fv-header-nav a:hover {
+  color: var(--fv-green);
+}
+
+/* === Footer === */
+.fv-footer {
+  padding: var(--fv-space-xl) 0;
+  background: var(--fv-gray-50);
+  border-top: 1px solid var(--fv-gray-200);
+  margin-top: var(--fv-space-3xl);
+}
+
+.fv-footer .fv-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--fv-space-md);
+}
+
+.fv-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--fv-space-sm);
+  color: var(--fv-gray-600);
+  font-size: var(--fv-fs-sm);
+}
+
+.fv-footer-brand img {
+  height: 24px;
+  width: auto;
+}
+
+.fv-footer-links {
+  display: flex;
+  align-items: center;
+  gap: var(--fv-space-lg);
+}
+
+.fv-footer-links a {
+  font-size: var(--fv-fs-sm);
+  color: var(--fv-gray-500);
+  text-decoration: none;
+  transition: color var(--fv-transition);
+}
+
+.fv-footer-links a:hover {
+  color: var(--fv-green);
+}
+
+.fv-footer-copy {
+  width: 100%;
+  text-align: center;
+  padding-top: var(--fv-space-md);
+  margin-top: var(--fv-space-md);
+  border-top: 1px solid var(--fv-gray-200);
+  font-size: var(--fv-fs-xs);
+  color: var(--fv-gray-400);
+}
